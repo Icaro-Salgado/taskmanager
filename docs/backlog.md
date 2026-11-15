@@ -30,3 +30,13 @@ if it would change the foundation, it becomes a design topic instead of a backlo
   API docs work offline.
 - Partial index on tasks `(due_date, id)` for the admin all-teams list: 90 ms to 0.3 ms on 200k tasks (journal
   entry 29). Not added while the member path is already fast.
+- With Redis fully down, login answers 500 as an HTML page: the rate limit counts in Redis. Decide whether the
+  limit fails open (allow) or closed (refuse with 503), and make unhandled 500s use the JSON error shape.
+- If the API is unreachable when the app loads, the login form shows although the stored session is still valid
+  (a reload recovers it). Show an error with a Retry button instead when the failure is not a 401.
+- Keep the board filters in the URL, so they survive a reload and can be shared as a link (the open task already
+  is, as `?task=`).
+- Detect lost updates: today the last save wins when two people edit the same task. Send the `updated_at` read
+  (or an ETag) with each change and answer 409 when the task changed in between.
+- Cursor pagination for the board columns. "Load more" asks by page number, so a task that moves while someone
+  pages can show twice (filtered out on screen) or be skipped until the next refresh.
