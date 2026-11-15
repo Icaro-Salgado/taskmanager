@@ -91,4 +91,23 @@ N. <type> | phase <P> | <model> | section <S of GENAI.md> | commit <hash>
    Note: <one line; for a correction: the finding and the fix>
 ```
 
-No entries yet.
+12. validation | phase 1 | Claude Fable 5.2 (scaffolding), Claude Opus 5.5 (fixes) | section 4 | commit 95f8965
+    Command: `./run.sh up`, `curl -i localhost:8000/api/v1/health`, `./run.sh test`, pre-commit hooks on commit
+    Output: db, redis, api `Healthy`, migrate `Exited`; `HTTP/1.1 200 OK {"status":"ok"}`; `17 passed`,
+    `Total coverage: 100.00%`; ruff check, ruff format, mypy (strict): `Passed`
+    Note: SimpleJWT 5.5.1 has `CHECK_REVOKE_TOKEN` but declares Django up to 5.2; phase 2 tests prove it on 6.0.10.
+13. correction | phase 1 | Claude Opus 5.5 | section 5 | commit 3f991c4
+    The owner asked to be guided through the uncommitted scaffolding; Claude found 9 issues in it. Fixed: mypy
+    hook failed without `.env`; uv cache shipped in the image (807MB to 557MB); two identical images built;
+    `ARG002` ignored project-wide; extra `chown` layer; no `LOGGING`, so 500 tracebacks were lost with DEBUG off
+    (test added); demo key under 50 characters; hooks never installed. Kept: dev tools in the image (~55MB).
+    Owner: "Make the fixes then commit with your first commit."
+14. decision | phase 1 | owner | section 4 | commit 3f991c4
+    Owner: "lets make de CI run on pull requests, every push is a waste of actions". Claude: commits go to `main`
+    with no pull requests, so CI would never run. Owner: "Make so we work on a develop branch and push to main,
+    the CI runs only on main, so we can work with tags." Result: work on `develop`; CI on pushes to `main`,
+    docs-only changes skipped.
+15. decision | phase 1 | Claude, approved by owner | section 7 | commit 3f991c4
+    Django 6.0.10, not 6.1 (drf-spectacular does not declare 6.1); a small typed environment reader instead of
+    django-environ; dev tools kept in the backend image so `run.sh test` runs in the container. Owner: "About
+    decisions agree with all."
