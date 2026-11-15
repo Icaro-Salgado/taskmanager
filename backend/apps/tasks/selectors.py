@@ -4,6 +4,8 @@ Deleted tasks and tasks of deleted teams are excluded here explicitly. "Overdue"
 defined once, as query conditions, and the API reads them from these annotations.
 """
 
+from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
@@ -22,6 +24,7 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.core.exceptions import NotFoundError
 from apps.tasks.models import TERMINAL_STATUSES, Status, Task
+from apps.teams.models import Membership, Role
 
 
 def overdue_condition(today: date) -> Q:
@@ -96,3 +99,43 @@ def list_tasks(user: User, filters: TaskFilters) -> QuerySet[Task]:
         overdue = overdue_condition(timezone.localdate())
         tasks = tasks.filter(overdue) if filters.overdue else tasks.exclude(overdue)
     return tasks.order_by(F("due_date").asc(nulls_last=True), "id")
+
+
+def get_active_task(task_id: int) -> Task | None:
+    """The task unless it or its team is deleted, whoever asks (for background jobs)."""
+    return (
+        Task.objects.filter(pk=task_id, deleted_at__isnull=True, team__deleted_at__isnull=True)
+        .select_related("team", "assignee")
+        .first()
+    )
+
+
+def is_overdue(task: Task) -> bool:
+    return Task.objects.filter(overdue_condition(timezone.localdate()), pk=task.pk).exists()
+
+
+def overdue_tasks_to_notify(today: date) -> QuerySet[Task]:
+    """Overdue tasks of active teams that the daily job has not notified yet."""
+    return (
+        Task.objects.filter(
+            overdue_condition(today),
+            overdue_notified_at__isnull=True,
+            deleted_at__isnull=True,
+            team__deleted_at__isnull=True,
+        )
+        .select_related("team", "assignee")
+        .order_by("id")
+    )
+
+
+def active_leaders_by_team(team_ids: Iterable[int]) -> dict[int, list[User]]:
+    """The active leaders of each team, by team id. Teams without one are left out."""
+    leaders: dict[int, list[User]] = defaultdict(list)
+    memberships = (
+        Membership.objects.filter(team_id__in=team_ids, role=Role.LEADER, user__is_active=True)
+        .select_related("user")
+        .order_by("user_id")
+    )
+    for membership in memberships:
+        leaders[membership.team_id].append(membership.user)
+    return leaders
