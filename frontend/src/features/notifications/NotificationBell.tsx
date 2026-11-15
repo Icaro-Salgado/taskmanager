@@ -4,7 +4,6 @@ import { useNavigate } from "react-router";
 import type { Notification } from "../../api/types";
 import { ErrorMessage } from "../../components/ErrorMessage";
 import { Loading } from "../../components/Loading";
-import { isNotFound } from "../../lib/errors";
 import { formatDateTime } from "../../lib/format";
 import { useMarkRead, useRecentNotifications, useUnreadCount } from "./queries";
 
@@ -71,14 +70,11 @@ export function NotificationBell() {
           </h2>
           <div className="max-h-96 overflow-y-auto">
             {recent.isPending && <Loading />}
-            {recent.isError &&
-              (isNotFound(recent.error) ? (
-                <p className="p-3 text-sm text-slate-500">Notifications are not available.</p>
-              ) : (
-                <div className="p-3">
-                  <ErrorMessage error={recent.error} />
-                </div>
-              ))}
+            {recent.isError && (
+              <div className="p-3">
+                <ErrorMessage error={recent.error} />
+              </div>
+            )}
             {recent.data?.results.length === 0 && (
               <p className="p-3 text-sm text-slate-500">No notifications.</p>
             )}
