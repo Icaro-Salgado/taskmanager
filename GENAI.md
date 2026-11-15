@@ -1,9 +1,22 @@
 # GenAI-assisted development
 
-How this project was built with a GenAI coding tool, and how its output was checked. The raw, chronological
-evidence is in `docs/genai-journal.md`; this file is the summary, filled at the end of each build phase.
+How this project was built with a GenAI coding tool (Claude Code), and how its output was checked. This file is
+the summary, filled at the end of each build phase. The raw, chronological evidence is in
+[`docs/genai-journal.md`](docs/genai-journal.md); each claim below cites its journal entry by number.
 
-Status: build finished (phase 8). Each section cites the journal entries that hold its evidence.
+## In short
+
+- **The prompt came last, not first.** The design was agreed with the AI one topic at a time, each decision went
+  into [`docs/implementation-prompt.md`](docs/implementation-prompt.md) as it was taken, and a second model
+  reviewed that prompt before any code existed. It found 21 gaps (section 2).
+- **Nothing the AI reported was taken on trust.** Every phase ends with the commands that were run and their real
+  output. Two review checkpoints stopped the build until the owner had read the code and exercised the running
+  stack (section 4).
+- **The checks found real defects in generated code** (section 5). Three examples: a forged `X-Forwarded-For`
+  header escaped the login rate limit; a broker outage turned an already saved change into a 500; two browser tabs
+  renewing their token at once logged each other out.
+- **Result:** 250 backend tests at 99.9% branch coverage, mypy (strict) and ruff clean, and tests that fail if a
+  list endpoint gains an N+1 query (sections 6 and 7).
 
 ## 1. Tools and method
 
@@ -11,7 +24,7 @@ Status: build finished (phase 8). Each section cites the journal entries that ho
 - Models: Claude Opus for the design conversation; Claude Fable 5.2 for the two reviews done before the build
   (journal entries 10 and 11). A different model reviewed the plan on purpose: it had no stake in the earlier
   decisions. The build session started on Claude Fable 5.2, which wrote the phase 1 scaffolding; the owner then
-  switched to Claude Opus 5.5, which fixed the review findings and builds from there on (entries 12 and 13).
+  switched to Claude Opus 5.5, which fixed the review findings and did the build from there on (entries 12 and 13).
 - Method: the design was agreed in conversation, one topic at a time, before any code. The decisions were distilled
   into `docs/implementation-prompt.md`, which was reviewed by a different model before the build and then given to
   a fresh session. Standing rules for the tool are in `CLAUDE.md`.
@@ -19,7 +32,7 @@ Status: build finished (phase 8). Each section cites the journal entries that ho
   frontend were built at the same time by three agents, each in its own git worktree and branch, with a model
   chosen per task (Claude Opus 5.5 where a subtle bug was likely, Claude Sonnet 5.5 for the mechanical seed).
   Claude Fable 5.2 wrote the briefs, agreed the API contract between the branches in advance, re-ran each
-  branch's tests itself and read its diff. Each branch reaches `develop` one at a time, uncommitted, for the
+  branch's tests itself and read its diff. Each branch reached `develop` one at a time, uncommitted, for the
   owner's review.
 
 ## 2. The prompt
@@ -39,8 +52,18 @@ the build, for example auth planned after the tasks that need it, two apps that 
 site paths that skipped the business rules. A precise prompt also gives more predictable code, because the model
 is not left to guess.
 
-- The implementation prompt: `docs/implementation-prompt.md`.
-- The standing instructions loaded in every session: `CLAUDE.md`.
+- The implementation prompt: [`docs/implementation-prompt.md`](docs/implementation-prompt.md). In order, it
+  holds: the goal, as a list of conditions that are true when the work is finished; the stack; the models; the
+  rules (permissions, invariants, soft delete); the layers and which app may import which; the error contract; the
+  API; security; notifications; the frontend; and a plan in nine phases. Each phase has a "Done when" test the
+  model can check itself against, and the plan names the only cases where the model must stop and ask. One phase,
+  verbatim:
+
+  > 3. **Tasks.** Done when: every task rule above works through the API and is tested, including the permission
+  > matrix, the assignee invariant, terminal rules, reopen, assign-self, soft delete, archived and overdue; list
+  > endpoints avoid N+1 queries, proven by query-count tests. **Review checkpoint.**
+
+- The standing instructions loaded in every session: [`CLAUDE.md`](CLAUDE.md).
 - The message that started the build session, verbatim:
 
   > Read CLAUDE.md, then docs/private/context.md, then docs/implementation-prompt.md.

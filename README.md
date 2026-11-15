@@ -159,6 +159,9 @@ docker-compose.yml   the whole stack; run.sh and run.ps1 are thin wrappers aroun
 
 ## Who uses it
 
+The requirements say tasks are assigned to users, but not who may see a task or assign it to whom. Teams with two
+roles are the smallest model that answers that: people see and assign tasks inside their own teams.
+
 - **A team member** opens the board of their team: one column per status (to do, in progress, blocked, done,
   canceled). They create tasks, take an unassigned task, move tasks through their statuses from the card, and
   filter the board by assignee, due date and overdue. When they finish a task by mistake, an Undo appears for a few
@@ -180,7 +183,7 @@ Users are created by administrators; there is no sign-up.
 | Pagination | Page number, 20 per page, `page_size` up to 100; one paginated request per board column |
 | JWT authentication | SimpleJWT: 15-minute access token, rotating refresh tokens blacklisted on use and logout |
 | PostgreSQL | PostgreSQL 17 in Compose; schema in each app's `models.py` |
-| Tests, 80% coverage | pytest, 249 tests, 99.93% branch coverage; vitest for the frontend client |
+| Tests, 80% coverage | pytest, 250 tests, 99.93% branch coverage; vitest for the frontend client |
 | Docker | `backend/Dockerfile`, `frontend/Dockerfile`, `docker-compose.yml` |
 | API documentation | drf-spectacular: Swagger UI and OpenAPI schema; a test fails on any undocumented endpoint |
 | Configuration and good practice | uv with `pyproject.toml`, ruff, mypy in strict mode, pre-commit, GitHub Actions |
@@ -213,6 +216,61 @@ Services raise domain exceptions; one handler turns them into HTTP with one JSON
 Apps depend in one direction: `core` → `accounts` → `teams` → `notifications` → `tasks`. The one exception is
 documented: removing a member (`teams`) calls one `tasks` function to unassign their tasks in the same transaction.
 
+## Data model
+
+```mermaid
+erDiagram
+    USER ||--o{ MEMBERSHIP : "is in"
+    TEAM ||--o{ MEMBERSHIP : has
+    TEAM ||--o{ TASK : owns
+    USER ||--o{ TASK : "created by"
+    USER |o--o{ TASK : "assigned to"
+    USER ||--o{ NOTIFICATION : receives
+    TEAM ||--o{ NOTIFICATION : "is about"
+    TASK |o--o{ NOTIFICATION : "is about"
+
+    USER {
+        bigint id PK
+        string email UK "the login, stored lowercase"
+        boolean is_active "deactivated, never deleted"
+        boolean is_superuser "the global administrator"
+    }
+    TEAM {
+        bigint id PK
+        string name "unique among active teams"
+        int archive_after_days "default 15"
+        datetime deleted_at "soft delete"
+    }
+    MEMBERSHIP {
+        bigint team_id FK
+        bigint user_id FK "unique with team_id"
+        string role "leader or member"
+    }
+    TASK {
+        bigint id PK
+        bigint team_id FK
+        string title
+        string status "todo, in_progress, blocked, done, canceled"
+        bigint created_by_id FK
+        bigint assignee_id FK "optional, always a member of the team"
+        date due_date "optional"
+        datetime completed_at "set exactly when done or canceled"
+        datetime overdue_notified_at "set by the daily job"
+        datetime deleted_at "soft delete"
+    }
+    NOTIFICATION {
+        bigint id PK
+        bigint user_id FK
+        bigint team_id FK
+        bigint task_id FK "empty for a message about several tasks"
+        string message
+        datetime read_at
+    }
+```
+
+Every table also has `created_at` and `updated_at`. The database itself enforces what it can: one membership per
+team and user, lowercase emails, team names unique among active teams, and `completed_at` matching the status.
+
 ## Key decisions and trade-offs
 
 The design was agreed one topic at a time before any code was written; the journal records who decided what.
@@ -244,6 +302,9 @@ The design was agreed one topic at a time before any code was written; the journ
   and 15-minute access tokens. An httpOnly cookie is safer but needs CSRF protection the API does not have.
 - **The frontend never decides permissions.** Each task carries `can_edit` and `can_delete`, computed by the same
   policies as the API, without an extra query per task. The API still checks every action.
+- **API documentation with drf-spectacular, not drf-yasg.** drf-yasg only generates OpenAPI 2 (Swagger 2.0);
+  drf-spectacular generates OpenAPI 3 and serves the same Swagger UI. A test fails when an endpoint is left
+  undocumented, so the documentation cannot fall behind the code.
 - **Typed Python** checked by mypy in strict mode, so the layers' contracts are checked, not just documented.
 - **No database index added yet.** Measured on 200k generated tasks: a member's list takes 1-5 ms without one. A
   partial index would speed up the administrator's all-teams page (90 ms to 0.3 ms) and is in the backlog until
