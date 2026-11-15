@@ -121,3 +121,9 @@ N. <type> | phase <P> | <model> | section <S of GENAI.md> | commit <hash>
     Output: `182 passed`, `Total coverage: 100.00%`; mypy `Success: no issues found in 72 source files`; task list
     `many == few == 2` queries; editing a done task answered `{"code":"task_finished",...}`
     Note: a test caught `is_overdue` returning NULL for tasks without a due date; fixed before the commit.
+18. validation | phase 4 | Claude Opus 5.5 | sections 4, 6 and 7 | commit d76ab90
+    Command: `uv run pytest`, `ruff check`, `mypy .`, `manage.py spectacular --validate --fail-on-warn`,
+    `./run.sh test`, six failed logins with curl against `./run.sh up`
+    Output: `191 passed`, `Total coverage: 100.00%`; mypy `Success: no issues found in 76 source files`; schema
+    with no warnings; logins `401 401 401 401 401 429`, `Retry-After: 59`, key `throttle_login_172.19.0.1` in Redis
+    Note: before annotations, schema generation had 62 errors (APIViews it could not read); now a test fails on any.

@@ -3,7 +3,7 @@
 How this project was built with a GenAI coding tool, and how its output was checked. The raw, chronological
 evidence is in `docs/genai-journal.md`; this file is the summary, filled at the end of each build phase.
 
-Status: in progress (phase 1 done). Sections marked "pending" are filled when the phase that produces their evidence is done.
+Status: in progress (phase 4 done). Sections marked "pending" are filled when the phase that produces their evidence is done.
 
 ## 1. Tools and method
 
@@ -56,6 +56,9 @@ owner reads the code and an independent review runs in a fresh session.
   `develop` (entry 14).
 - Phase 2 (accounts, auth, teams): unit, API, admin site and query-count tests, entry 16.
 - Phase 3 (tasks): permission matrix, invariants, filters and query-count tests, entry 17.
+- Review checkpoint 1: the owner exercised every endpoint against the running stack with an API client
+  collection (one request per rule, each with its expected status) and inspected the database before moving on.
+- Phase 4 (rate limits, API docs): limit tests and a schema test that fails on any undocumented endpoint, entry 18.
 
 ## 5. What was corrected or improved
 
@@ -96,6 +99,15 @@ Phase 3 (entry 17):
 | Archived is a query condition per team; reopening un-archives | `test_selectors.py::test_archived_*`, `::test_each_team_has_...`, `::test_a_reopened_task_...` |
 | Hidden tasks answer 404; invalid input and filters answer 400 with field details | `test_api.py` |
 
+Phase 4 (entry 18):
+
+| Rule | Covered by (`backend/apps/...`) |
+|---|---|
+| 5 logins per minute per client address, failed attempts included; 429 with `Retry-After` | `accounts/tests/test_throttling.py::test_the_sixth_login_...`, `::test_failed_logins_count_...` |
+| A forged `X-Forwarded-For` does not reset the login count | `test_throttling.py::test_a_forged_forwarded_address_...` |
+| 300 requests per minute per user elsewhere; the health check is exempt | `test_throttling.py::test_the_general_limit_is_per_user`, `::test_the_health_check_...` |
+| Every endpoint documents its request, responses and errors | `core/tests/test_schema.py::test_the_schema_generates_without_warnings` |
+
 ## 7. Performance and idiomatic quality
 
 Pending. Query-count tests on the list endpoints, one `EXPLAIN ANALYZE` of the task list query and the index
@@ -106,3 +118,5 @@ decision it led to, the output of `manage.py check --deploy`, the mypy strict re
   rule families; pytest fails on any warning and below 80% branch coverage. Version choices: entry 15.
 - Query counts (entries 16 and 17): the team list is one query and the task list two (count and page), whatever
   the number of rows; tests fail if a change adds an N+1.
+- Rate limits are counted in Redis, not in process memory: gunicorn runs several workers, and a per-process
+  count would multiply every limit by the number of workers (entry 18).
