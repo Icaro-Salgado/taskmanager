@@ -27,6 +27,7 @@ switch ($Command) {
         Write-Host ""
         Write-Host "API:          http://localhost:$apiPort/api/v1/"
         Write-Host "Health:       http://localhost:$apiPort/api/v1/health"
+        Write-Host "Swagger UI:   http://localhost:$apiPort/api/v1/docs"
         Write-Host "Django admin: http://localhost:$apiPort/admin/"
     }
     "down" {

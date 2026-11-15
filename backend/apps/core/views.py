@@ -1,5 +1,6 @@
 from django.db import DatabaseError, connection
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -20,7 +21,14 @@ class HealthView(APIView):
 
     authentication_classes = ()
     permission_classes = (AllowAny,)
+    throttle_classes = ()  # probes run every few seconds and must never be refused
 
+    @extend_schema(
+        responses={
+            200: inline_serializer("Health", {"status": serializers.CharField()}),
+            503: inline_serializer("HealthDown", {"status": serializers.CharField()}),
+        },
+    )
     def get(self, request: Request) -> Response:
         if database_is_reachable():
             return Response({"status": "ok"})

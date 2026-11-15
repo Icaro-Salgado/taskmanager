@@ -22,6 +22,7 @@ case "${1:-up}" in
         echo
         echo "API:          http://localhost:${api_port:-8000}/api/v1/"
         echo "Health:       http://localhost:${api_port:-8000}/api/v1/health"
+        echo "Swagger UI:   http://localhost:${api_port:-8000}/api/v1/docs"
         echo "Django admin: http://localhost:${api_port:-8000}/admin/"
         ;;
     down)

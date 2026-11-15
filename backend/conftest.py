@@ -11,6 +11,12 @@ def fast_password_hashing(settings: Settings) -> None:
     settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 
+@pytest.fixture(autouse=True)
+def no_throttling(settings: Settings) -> None:
+    """Throttling off: a dummy cache never remembers a request. Rate limit tests opt back in."""
+    settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}
+
+
 @pytest.fixture
 def api_client() -> APIClient:
     return APIClient()

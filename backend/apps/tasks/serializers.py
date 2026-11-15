@@ -37,6 +37,15 @@ class TaskSerializer(serializers.ModelSerializer[Task]):
         read_only_fields = fields
 
 
+class TaskPageSerializer(serializers.Serializer[None]):
+    """One page of the task list, as `TaskPagination` writes it (documentation only)."""
+
+    count = serializers.IntegerField()
+    next = serializers.URLField(allow_null=True)
+    previous = serializers.URLField(allow_null=True)
+    results = TaskSerializer(many=True)
+
+
 class TaskCreateSerializer(serializers.Serializer[None]):
     team = serializers.IntegerField()
     title = serializers.CharField(max_length=200)

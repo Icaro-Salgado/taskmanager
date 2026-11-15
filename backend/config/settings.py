@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
+    "drf_spectacular",
     "apps.core",
     "apps.accounts",
     "apps.teams",
@@ -87,6 +88,15 @@ USE_I18N = False
 USE_TZ = True
 TIME_ZONE = env_str("TIME_ZONE", "America/Sao_Paulo")
 
+# Redis backs the cache, which DRF uses to count requests for rate limiting. A shared store is
+# needed: each gunicorn worker has its own memory, so a local cache would multiply every limit.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": env_str("REDIS_URL", "redis://localhost:6379/0"),
+    }
+}
+
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STORAGES = {
@@ -120,6 +130,25 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "EXCEPTION_HANDLER": "apps.core.exception_handler.handle_exception",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Per user (per client address when anonymous). The login endpoint has its own stricter scope.
+    "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.UserRateThrottle"],
+    "DEFAULT_THROTTLE_RATES": {
+        "user": env_str("THROTTLE_USER_RATE", "300/min"),
+        "login": env_str("THROTTLE_LOGIN_RATE", "5/min"),
+    },
+    # Proxies in front of the API. 0: the client address is the socket peer (REMOTE_ADDR), and
+    # X-Forwarded-For is ignored, so a client cannot fake its address to dodge the login limit.
+    "NUM_PROXIES": env_int("DRF_NUM_PROXIES", 0),
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Task manager API",
+    "DESCRIPTION": "Teams, roles, task assignment and notifications. Authenticate with a Bearer "
+    "access token from `POST /api/v1/auth/token`.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
 }
 
 SIMPLE_JWT = {
