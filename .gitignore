@@ -32,3 +32,6 @@ dist/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Claude Code local state (agent worktrees, local settings)
+.claude/
