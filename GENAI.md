@@ -55,6 +55,7 @@ owner reads the code and an independent review runs in a fresh session.
   walked through the scaffolding with Claude (entry 13). CI runs on `main`, which only receives merges from
   `develop` (entry 14).
 - Phase 2 (accounts, auth, teams): unit, API, admin site and query-count tests, entry 16.
+- Phase 3 (tasks): permission matrix, invariants, filters and query-count tests, entry 17.
 
 ## 5. What was corrected or improved
 
@@ -82,6 +83,19 @@ Each rule with the test that covers it. Phase 2 (entry 16):
 | Team soft delete by admins only; deleted teams are hidden and read-only; names unique among active teams | `test_services.py`, `teams/tests/test_models.py` |
 | The admin site runs the services, has no bulk delete, has the orphan filter, cannot delete users | `teams/tests/test_admin.py` |
 
+Phase 3 (entry 17):
+
+| Rule | Covered by (`backend/apps/tasks/tests/...`) |
+|---|---|
+| Who may edit, reopen and delete (creator, assignee, leader, admin); ex-members have no rights | `test_services.py::test_who_may_*` (parametrized matrix), `::test_a_creator_who_left_...` |
+| The assignee is an active member of the task's team | `test_services.py::test_the_assignee_must_be_...`, `::test_an_inactive_member_...` |
+| Removing a member unassigns their tasks, in the same transaction | `test_services.py::test_removing_a_member_...`, `::test_member_removal_and_unassignment_...` |
+| No task created finished; finished tasks read-only; reopen clears `completed_at`; the database checks `completed_at` matches the status | `test_services.py`, `test_api.py::test_finishing_then_editing_then_reopening` |
+| Assign-self takes only unassigned, unfinished tasks and changes nothing else | `test_services.py::test_a_member_takes_...`, `test_api.py::test_assign_self` |
+| Overdue uses today in `TIME_ZONE`; a task without a due date is never overdue | `test_selectors.py::test_is_overdue`, `::test_today_is_taken_in_the_configured_time_zone` |
+| Archived is a query condition per team; reopening un-archives | `test_selectors.py::test_archived_*`, `::test_each_team_has_...`, `::test_a_reopened_task_...` |
+| Hidden tasks answer 404; invalid input and filters answer 400 with field details | `test_api.py` |
+
 ## 7. Performance and idiomatic quality
 
 Pending. Query-count tests on the list endpoints, one `EXPLAIN ANALYZE` of the task list query and the index
@@ -90,3 +104,5 @@ decision it led to, the output of `manage.py check --deploy`, the mypy strict re
 - Tooling, from phase 1 (entry 12): mypy in strict mode plus `disallow_any_explicit`, with the Django and DRF
   plugins; ruff with the security (`S`), annotation (`ANN`), naive datetime (`DTZ`), Django (`DJ`) and bugbear (`B`)
   rule families; pytest fails on any warning and below 80% branch coverage. Version choices: entry 15.
+- Query counts (entries 16 and 17): the team list is one query and the task list two (count and page), whatever
+  the number of rows; tests fail if a change adds an N+1.

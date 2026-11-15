@@ -116,3 +116,8 @@ N. <type> | phase <P> | <model> | section <S of GENAI.md> | commit <hash>
     Output: `97 passed`, `Total coverage: 100.00%`; ruff `All checks passed!`; mypy `Success: no issues found in
     56 source files`; `/auth/me` answered `{"id":1,"email":"smoke@example.com","is_admin":true}`
     Note: SimpleJWT 5.5.1 works on Django 6.0.10 (login, rotation, blacklist, `CHECK_REVOKE_TOKEN` all tested).
+17. validation | phase 3 | Claude Opus 5.5 | sections 4, 6 and 7 | commit 4ecec2a
+    Command: `uv run pytest`, `ruff check`, `mypy .`, `./run.sh test`, create/finish/reopen flow with curl
+    Output: `182 passed`, `Total coverage: 100.00%`; mypy `Success: no issues found in 72 source files`; task list
+    `many == few == 2` queries; editing a done task answered `{"code":"task_finished",...}`
+    Note: a test caught `is_overdue` returning NULL for tasks without a due date; fixed before the commit.
