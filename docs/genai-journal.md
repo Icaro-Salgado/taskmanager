@@ -172,3 +172,17 @@ N. <type> | phase <P> | <model> | section <S of GENAI.md> | commit <hash>
     assigned before the daily job notifies the assignee twice, so its leaders are still told; inactive users are
     never recipients; the job locks its rows (`SKIP LOCKED`), so two runs at once cannot notify twice; old
     notifications stay listed; no admin page for notifications; `celery-types` for mypy.
+28. validation | phase 6 | Claude Sonnet 5.5 (agent), Claude Fable 5.2 and Opus 5.5 (review) | section 4 | commit 39a04d0
+    Command: `./run.sh test`, pre-commit hooks, `./run.sh up` (migrate runs `seed_demo`), `seed_demo` again
+    Output: `244 passed`, `Total coverage: 99.93%`; mypy `Success: no issues found in 100 source files`; first
+    run on an empty database `Seed done: 42 new tasks.` (observed in the review session), then `0 new tasks.`
+    Note: in review, migrate failed to queue the seed's notifications until it also waited for Redis (39a04d0).
+29. decision | phase 6 | owner | section 7 | commit 39a04d0
+    `EXPLAIN ANALYZE` on 200k generated tasks (not committed; plans not saved, numbers from the review session): a
+    member's list 1-5 ms with no index; the admin all-teams page 90 ms, 0.3 ms with a partial `(due_date, id)`
+    index; the admin count a ~40 ms seq scan either way. Claude recommended no index. Owner: "No index for now,
+    keep it for later". The partial index is in the backlog.
+30. decision | phase 6 | Claude, approved by owner | section 6 | commit f28d9ce
+    Seed rows are matched by team and title and never updated, so dates stay relative to the first run; finished
+    tasks, teams, leader memberships and the deleted team are written straight to the database (the services
+    forbid those states); demo content lives in `apps/tasks/demo_data.py`. Owner: "Approve all".

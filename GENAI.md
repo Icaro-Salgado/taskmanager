@@ -70,6 +70,8 @@ owner reads the code and an independent review runs in a fresh session.
 - Phase 5 (notifications): the agent's reported results were not taken on trust. The reviewing model re-ran the
   suite, then exercised the real stack: a task assigned through the services, the worker's log, the overdue
   command run twice (the second run sends nothing) and the endpoints over HTTP, entry 25.
+- Phase 6 (demo seed): the suite re-run, and the seed run on the real stack twice, the second run adding nothing.
+  Running it there exposed a startup-order bug the agent's isolated tests could not see, entry 28.
 
 ## 5. What was corrected or improved
 
@@ -138,6 +140,15 @@ Phase 5 (entries 25 to 27):
 | A job that runs late sends nothing if the task was deleted or reassigned | `test_assignment_notifications.py::test_nothing_is_sent_for_a_task_deleted_or_reassigned_...` |
 | A broker outage loses the notification, not the assignment | `test_assignment_notifications.py::test_a_broker_outage_...` |
 
+Phase 6, demo seed (entries 28 and 30):
+
+| Rule | Covered by (`backend/apps/tasks/tests/test_seed_demo.py`) |
+|---|---|
+| Seeded users log in with the demo-only password the command prints | `::test_creates_an_admin_and_users_...`, `::test_a_seeded_user_can_obtain_a_token` |
+| The seed shows every case: each status, overdue, archived, unassigned, a leaderless team, mixed roles | `::test_every_status_...`, `::test_some_tasks_are_overdue_...`, `::test_old_finished_tasks_...`, `::test_one_team_has_no_leader_...` |
+| The soft-deleted team and its tasks stay hidden | `::test_the_soft_deleted_team_...` |
+| Running it twice changes nothing | `::test_running_the_seed_twice_changes_no_row_counts` |
+
 ## 7. Performance and idiomatic quality
 
 Pending. Query-count tests on the list endpoints, one `EXPLAIN ANALYZE` of the task list query and the index
@@ -152,3 +163,5 @@ decision it led to, the output of `manage.py check --deploy`, the mypy strict re
   count would multiply every limit by the number of workers (entry 18).
 - Notifications (entry 25): the list is two queries whatever the number of rows, and the overdue job reads the
   tasks and the leaders in two queries and marks the tasks with one update, instead of one query per task.
+- Indexes (entry 29): `EXPLAIN ANALYZE` on 200k generated tasks. A member's list needs no index; a partial index
+  would speed up the admin all-teams page, but the owner kept it for later instead of adding it before it is needed.

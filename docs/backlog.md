@@ -28,3 +28,5 @@ if it would change the foundation, it becomes a design topic instead of a backlo
 - Follow-up: the invited user accepts or declines the invitation instead of joining automatically.
 - Serve the Swagger UI assets from the app (for example drf-spectacular-sidecar) instead of a public CDN, so the
   API docs work offline.
+- Partial index on tasks `(due_date, id)` for the admin all-teams list: 90 ms to 0.3 ms on 200k tasks (journal
+  entry 29). Not added while the member path is already fast.
