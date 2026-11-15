@@ -54,6 +54,7 @@ owner reads the code and an independent review runs in a fresh session.
 - Phase 1 (setup): stack, health endpoint, tests, linters and hooks, entry 12. Before the first commit the owner
   walked through the scaffolding with Claude (entry 13). CI runs on `main`, which only receives merges from
   `develop` (entry 14).
+- Phase 2 (accounts, auth, teams): unit, API, admin site and query-count tests, entry 16.
 
 ## 5. What was corrected or improved
 
@@ -67,7 +68,19 @@ Code stage: each review finding, its fix and the commit that fixed it.
 
 ## 6. Edge cases, authentication and validation
 
-Pending. Each rule with the test that covers it.
+Each rule with the test that covers it. Phase 2 (entry 16):
+
+| Rule | Covered by (`backend/apps/...`) |
+|---|---|
+| Email is the login, stored lowercase, case-insensitive at login | `accounts/tests/test_models.py`, `test_auth_api.py::test_login_email_is_case_insensitive` |
+| Deactivated users cannot log in, and their open tokens stop working | `test_auth_api.py::test_a_deactivated_user_cannot_log_in`, `::test_a_user_deactivated_after_login_is_rejected` |
+| Access tokens last 15 minutes; refresh tokens rotate and are blacklisted after use and on logout | `test_auth_api.py::test_access_tokens_last_15_minutes`, `::test_refresh_rotates_...`, `::test_logout_...` |
+| Changing the password needs the current one, runs the validators, revokes older tokens | `test_auth_api.py::test_change_password_*` |
+| Every error has one JSON shape; hidden resources answer 404, forbidden actions 403 | `core/tests/test_exception_handler.py`, `teams/tests/test_api.py` |
+| Leaders add (by email, as member), promote, demote and remove; members can leave; teams may have no leader | `teams/tests/test_services.py`, `teams/tests/test_api.py` |
+| Inactive or unknown users cannot be added | `test_services.py::test_only_existing_active_users_can_be_added` |
+| Team soft delete by admins only; deleted teams are hidden and read-only; names unique among active teams | `test_services.py`, `teams/tests/test_models.py` |
+| The admin site runs the services, has no bulk delete, has the orphan filter, cannot delete users | `teams/tests/test_admin.py` |
 
 ## 7. Performance and idiomatic quality
 

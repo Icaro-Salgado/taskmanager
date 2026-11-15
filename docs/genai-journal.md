@@ -111,3 +111,8 @@ N. <type> | phase <P> | <model> | section <S of GENAI.md> | commit <hash>
     Django 6.0.10, not 6.1 (drf-spectacular does not declare 6.1); a small typed environment reader instead of
     django-environ; dev tools kept in the backend image so `run.sh test` runs in the container. Owner: "About
     decisions agree with all."
+16. validation | phase 2 | Claude Opus 5.5 | sections 4 and 6 | commit 7ea1d39
+    Command: `uv run pytest`, `ruff check`, `mypy .`, `./run.sh test`, login with curl against `./run.sh up`
+    Output: `97 passed`, `Total coverage: 100.00%`; ruff `All checks passed!`; mypy `Success: no issues found in
+    56 source files`; `/auth/me` answered `{"id":1,"email":"smoke@example.com","is_admin":true}`
+    Note: SimpleJWT 5.5.1 works on Django 6.0.10 (login, rotation, blacklist, `CHECK_REVOKE_TOKEN` all tested).
