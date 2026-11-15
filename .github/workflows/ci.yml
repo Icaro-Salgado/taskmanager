@@ -36,7 +36,8 @@ jobs:
         ports:
           - 6379:6379
     env:
-      DJANGO_SECRET_KEY: ci-only-secret-key
+      # At least 32 bytes: PyJWT warns about shorter HMAC keys, and pytest turns warnings into errors.
+      DJANGO_SECRET_KEY: ci-only-secret-key-used-nowhere-else-than-this-workflow
       POSTGRES_PASSWORD: ci-only-password
     steps:
       - uses: actions/checkout@v4
