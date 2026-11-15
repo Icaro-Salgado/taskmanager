@@ -212,3 +212,9 @@ N. <type> | phase <P> | <model> | section <S of GENAI.md> | commit <hash>
     Open topics answered by the owner before phase 7 (reconstructed; the exact words were not kept): the full
     planned UI scope, the access token in memory and the refresh token in localStorage (trade-off in
     `frontend/src/api/tokens.ts`), Tailwind CSS for styling.
+37. validation | phase 8 | Claude Opus 5.5 | sections 4, 7 | commit 05ef604
+    Command: a fresh clone of `develop` started with `./run.sh up` on an empty database, `./run.sh test`,
+    `manage.py check --deploy`, `find . -type l -not -path './.git/*'`, a scan of the git history for secrets
+    Output: every service healthy, `Seed done: 42 new tasks.`, app and demo login 200; `249 passed`; deploy check
+    `4 issues` (W004, W008, W012, W016: HTTPS only); no symlinks; no `.env`, no private key ever committed
+    Note: the README's restore SQL was run inside a transaction and rolled back (`UPDATE 1`).

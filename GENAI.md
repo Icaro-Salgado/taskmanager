@@ -3,7 +3,7 @@
 How this project was built with a GenAI coding tool, and how its output was checked. The raw, chronological
 evidence is in `docs/genai-journal.md`; this file is the summary, filled at the end of each build phase.
 
-Status: in progress (phase 5 done). Sections marked "pending" are filled when the phase that produces their evidence is done.
+Status: build finished (phase 8). Each section cites the journal entries that hold its evidence.
 
 ## 1. Tools and method
 
@@ -48,12 +48,97 @@ is not left to guess.
 
 ## 3. Output code (representative samples)
 
-Pending. Three samples with their commit hashes: one service that protects an invariant, one policy, and the
-overdue notification job.
+Three excerpts of the generated code, each with the commit that introduced it and what to look at. All three
+were written by Claude Opus 5.5 from the implementation prompt and read by the owner at a review checkpoint.
+
+**A service that protects an invariant** (`backend/apps/tasks/services.py`, commit `4ecec2a`;
+`backend/apps/teams/services.py`, commit `7ea1d39`). The rule "an assignee is an active member of the task's team"
+is checked on every write that sets an assignee, and kept true from the other side when a member leaves:
+
+```python
+def _assignee_for(team: Team, user_id: int | None) -> User | None:
+    """The invariant: an assignee is an active member of the task's team."""
+    if user_id is None:
+        return None
+    membership = (
+        Membership.objects.select_related("user")
+        .filter(team=team, user_id=user_id, user__is_active=True)
+        .first()
+    )
+    if membership is None:
+        raise RuleViolationError(
+            "The assignee must be an active member of the team.", code="invalid_assignee"
+        )
+    return membership.user
+
+
+def remove_member(*, actor: User, membership: Membership) -> None:
+    _ensure_active(membership.team)
+    if not policies.can_remove_member(actor, membership.team, membership.user):
+        raise PermissionDeniedError("Only team leaders can remove other members.")
+    with transaction.atomic():
+        unassign_member_tasks(team=membership.team, user=membership.user)
+        membership.delete()
+```
+
+What to look at: the service raises domain errors and imports nothing from DRF (one exception handler maps them to
+HTTP); the unassignment runs in the same transaction as the removal, so no reader ever sees a non-member assignee;
+`teams` calls `tasks` explicitly, the one documented exception to the app order (design entry 10).
+
+**A policy** (`backend/apps/tasks/policies.py`, commit `0e09fc6`). Permissions are plain functions with no I/O
+of their own, so the same rule answers both the API's checks and the `can_edit` flag the frontend reads:
+
+```python
+def can_edit_task(user: User, task: Task) -> bool:
+    """Creator, assignee, team leader or admin. Also governs reopen."""
+    return can_edit_task_with_role(user, task, role_in(task.team, user))
+
+
+def can_edit_task_with_role(user: User, task: Task, role: Role | None) -> bool:
+    if is_admin(user):
+        return True
+    if role is None:
+        return False
+    return role == Role.LEADER or user.pk in (task.created_by_id, task.assignee_id)
+```
+
+What to look at: an ex-member who created or was assigned the task has no rights (`role is None` comes first); the
+`_with_role` variant takes the role the list query already annotates, so a page of tasks costs no extra query per
+task (entry 31). The full matrix is a parametrized test (section 6, phase 3).
+
+**The overdue job** (`backend/apps/tasks/services.py`, commit `80a727c`):
+
+```python
+def notify_overdue_tasks() -> OverdueRun:
+    with transaction.atomic():
+        # Rows locked by a run in progress (beat and the command at once) are skipped, so no task
+        # is notified twice.
+        tasks = list(
+            selectors.overdue_tasks_to_notify(timezone.localdate()).select_for_update(
+                skip_locked=True, of=("self",)
+            )
+        )
+        leaders = selectors.active_leaders_by_team({task.team_id for task in tasks})
+        groups: dict[tuple[User, Team], list[Task]] = defaultdict(list)
+        for task in tasks:
+            for user in _overdue_recipients(task, leaders.get(task.team_id, [])):
+                groups[(user, task.team)].append(task)
+        for (user, team), user_tasks in groups.items():
+            message, task_id = _overdue_message(team, user_tasks)
+            create_notification(user=user, team=team, message=message, task_id=task_id)
+        notified = {task.pk for user_tasks in groups.values() for task in user_tasks}
+        Task.objects.filter(pk__in=notified).update(overdue_notified_at=timezone.now())
+    return OverdueRun(notifications=len(groups), tasks=len(notified))
+```
+
+What to look at: two reads and one update whatever the number of tasks; one message per person and team (one task
+by name, several as a count); only tasks that reached someone are marked, so a task with nobody to notify is picked
+up later; `SKIP LOCKED` keeps two runs at once from notifying twice (entries 25 and 27). The Celery task and the
+management command are thin wrappers around this service.
 
 ## 4. How the AI's suggestions were validated
 
-Process (journal entry 11): validation is planned, not improvised. Results are pending. Per phase: the command,
+Process (journal entry 11): validation is planned, not improvised. Per phase: the command,
 its real output and the commit hash. Two review checkpoints (after the core domain and after the frontend): the
 owner reads the code and an independent review runs in a fresh session.
 
@@ -172,8 +257,8 @@ Phase 7, frontend (entries 31 to 35):
 
 ## 7. Performance and idiomatic quality
 
-Pending. Query-count tests on the list endpoints, one `EXPLAIN ANALYZE` of the task list query and the index
-decision it led to, the output of `manage.py check --deploy`, the mypy strict result, and the ruff rule set.
+Evidence: query-count tests, one `EXPLAIN ANALYZE` and the index decision, the static checks and the output of
+`manage.py check --deploy` (entry 37).
 
 - Tooling, from phase 1 (entry 12): mypy in strict mode plus `disallow_any_explicit`, with the Django and DRF
   plugins; ruff with the security (`S`), annotation (`ANN`), naive datetime (`DTZ`), Django (`DJ`) and bugbear (`B`)
@@ -189,3 +274,7 @@ decision it led to, the output of `manage.py check --deploy`, the mypy strict re
 - Frontend (entry 31): `can_edit` and `can_delete` are computed from the role the task query already annotates,
   so the task list stays at two queries (`test_list_queries_do_not_grow_with_the_number_of_tasks`). TypeScript in
   strict mode, eslint, vitest and the build run in CI next to the backend checks (entry 35).
+- `manage.py check --deploy` on a fresh clone (entry 37) reports four warnings, all about HTTPS: HSTS, SSL
+  redirect, and secure session and CSRF cookies. The stack serves plain HTTP on localhost, so turning them on
+  would break the demo; they belong to a deployment behind TLS. Nothing else is reported: `DEBUG` is off, the
+  secret key comes from the environment, and allowed hosts are set.
