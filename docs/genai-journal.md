@@ -149,3 +149,26 @@ N. <type> | phase <P> | <model> | section <S of GENAI.md> | commit <hash>
 23. decision | process | owner | section 4 | commit 5f02c98
     Owner: "when you prompt me for review, do not commit yet (you can run pre-commit so it has the fixes) but do not
     commit, for me is easier to review that way". Added to `CLAUDE.md`.
+24. decision | process | owner | section 1 | commit 124babf
+    Owner: "Do something, subagents with the proper model (for token optimization without loose quality or create
+    bugs), if it is parelizable, each works on a different branch after everything done we will reviewing each one
+    on develop". Result: phases 5, 6 and 7 built in parallel by three agents, each in its own git worktree and
+    branch, with its own test database and no access to the compose stack. Claude Fable 5.2 wrote the briefs,
+    fixed the notification API contract in advance, reviews each branch and brings it to `develop` one at a time.
+25. validation | phase 5 | Claude Opus 5.5 (agent), Claude Fable 5.2 (review, fix) | sections 4, 6 | commit 124babf
+    Command: `uv run pytest`, pre-commit hooks, `./run.sh up`, an assignment through the services on the running
+    stack, `manage.py notify_overdue` twice, the notification endpoints with curl
+    Output: `235 passed`, `Total coverage: 99.92%`; hooks `Passed`; worker lists `notify_assignment` and
+    `notify_overdue_tasks`; `Sent 2 notification(s) about 1 overdue task(s).` then `Sent 0 notification(s) about
+    0 overdue task(s).`; mark read answered 200 and the unread count went from 2 to 1
+26. correction | phase 5 | Claude Fable 5.2 | section 5 | commit 124babf
+    Reading the agent's diff, Claude found that the assignment notification is queued after the commit with no
+    error handling: with the broker down, a saved change answered 500. Owner chose "A" (catch and log; the
+    notification is lost). Checked against an unreachable broker: logged `kombu.exceptions.OperationalError`,
+    returned normally. Known limit: rate limiting uses the same Redis, so with Redis fully down login answers 500.
+27. decision | phase 5 | Claude, approved by owner | section 6 | commits 6d0f452, 80a727c
+    Approved after the owner's review of the diff ("A, approve all."): creating a task already assigned to someone
+    notifies them; a job that runs after the task was deleted or reassigned sends nothing; an overdue task
+    assigned before the daily job notifies the assignee twice, so its leaders are still told; inactive users are
+    never recipients; the job locks its rows (`SKIP LOCKED`), so two runs at once cannot notify twice; old
+    notifications stay listed; no admin page for notifications; `celery-types` for mypy.

@@ -3,7 +3,7 @@
 How this project was built with a GenAI coding tool, and how its output was checked. The raw, chronological
 evidence is in `docs/genai-journal.md`; this file is the summary, filled at the end of each build phase.
 
-Status: in progress (phase 4 done). Sections marked "pending" are filled when the phase that produces their evidence is done.
+Status: in progress (phase 5 done). Sections marked "pending" are filled when the phase that produces their evidence is done.
 
 ## 1. Tools and method
 
@@ -15,6 +15,12 @@ Status: in progress (phase 4 done). Sections marked "pending" are filled when th
 - Method: the design was agreed in conversation, one topic at a time, before any code. The decisions were distilled
   into `docs/implementation-prompt.md`, which was reviewed by a different model before the build and then given to
   a fresh session. Standing rules for the tool are in `CLAUDE.md`.
+- Parallel build, from phase 5 (entry 24): on the owner's request, the notifications, the seed data and the
+  frontend were built at the same time by three agents, each in its own git worktree and branch, with a model
+  chosen per task (Claude Opus 5.5 where a subtle bug was likely, Claude Sonnet 5.5 for the mechanical seed).
+  Claude Fable 5.2 wrote the briefs, agreed the API contract between the branches in advance, re-ran each
+  branch's tests itself and read its diff. Each branch reaches `develop` one at a time, uncommitted, for the
+  owner's review.
 
 ## 2. The prompt
 
@@ -61,6 +67,9 @@ owner reads the code and an independent review runs in a fresh session.
   The decisions taken during phases 2 to 4 were approved in one batch (entries 19 to 22). From then on, work
   stopped for review is left uncommitted so the owner reviews the diff before the commit (entry 23).
 - Phase 4 (rate limits, API docs): limit tests and a schema test that fails on any undocumented endpoint, entry 18.
+- Phase 5 (notifications): the agent's reported results were not taken on trust. The reviewing model re-ran the
+  suite, then exercised the real stack: a task assigned through the services, the worker's log, the overdue
+  command run twice (the second run sends nothing) and the endpoints over HTTP, entry 25.
 
 ## 5. What was corrected or improved
 
@@ -73,6 +82,9 @@ Code stage: each review finding, its fix and the commit that fixed it.
   server error; a test now runs a fresh interpreter and checks the traceback reaches stderr.
 - Phase 1, found in phase 2: the type stubs described Django 6.1 while the project runs 6.0, so mypy checked the
   code against the wrong API; repinned to the 6.0 line (entry 19).
+- Phase 5: the agent's code queued the assignment notification after the commit with no error handling, so a
+  broker outage turned a saved change into a 500. Found by the reviewing model reading the diff, fixed with a
+  test, and checked against an unreachable broker (entry 26).
 
 ## 6. Edge cases, authentication and validation
 
@@ -113,6 +125,19 @@ Phase 4 (entry 18):
 | Every endpoint documents its request, responses and errors | `core/tests/test_schema.py::test_the_schema_generates_without_warnings` |
 | Unknown `/api/` paths answer the JSON error shape; other paths keep the HTML page | `core/tests/test_not_found.py` |
 
+Phase 5 (entries 25 to 27):
+
+| Rule | Covered by (`backend/apps/...`) |
+|---|---|
+| Notifications are private: the list shows only the caller's, someone else's answers 404 | `notifications/tests/test_api.py`, `notifications/tests/test_services.py` |
+| A deactivated user receives nothing and is never a recipient | `test_services.py::test_a_deactivated_user_...`, `tasks/tests/test_overdue_job.py::test_deactivated_users_...` |
+| Overdue job: the assignee and the leaders, one message per person and team; several tasks become one team message | `test_overdue_job.py::test_one_overdue_task_...`, `::test_several_overdue_tasks_...`, `::test_tasks_are_grouped_per_team` |
+| A second run sends nothing; a new due date makes the task notifiable again | `test_overdue_job.py::test_a_second_run_...`, `::test_a_new_due_date_...` |
+| A task with nobody to notify stays unmarked; deleted tasks and deleted teams are ignored | `test_overdue_job.py::test_a_task_with_nobody_...`, `::test_deleted_tasks_...` |
+| Assignment notifies only after the commit, never the person who assigned themselves | `tasks/tests/test_assignment_notifications.py::test_assigning_someone_else_...`, `::test_assigning_yourself_...` |
+| A job that runs late sends nothing if the task was deleted or reassigned | `test_assignment_notifications.py::test_nothing_is_sent_for_a_task_deleted_or_reassigned_...` |
+| A broker outage loses the notification, not the assignment | `test_assignment_notifications.py::test_a_broker_outage_...` |
+
 ## 7. Performance and idiomatic quality
 
 Pending. Query-count tests on the list endpoints, one `EXPLAIN ANALYZE` of the task list query and the index
@@ -125,3 +150,5 @@ decision it led to, the output of `manage.py check --deploy`, the mypy strict re
   the number of rows; tests fail if a change adds an N+1.
 - Rate limits are counted in Redis, not in process memory: gunicorn runs several workers, and a per-process
   count would multiply every limit by the number of workers (entry 18).
+- Notifications (entry 25): the list is two queries whatever the number of rows, and the overdue job reads the
+  tasks and the leaders in two queries and marks the tasks with one update, instead of one query per task.
