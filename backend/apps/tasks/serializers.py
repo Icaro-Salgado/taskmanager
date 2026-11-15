@@ -113,6 +113,7 @@ class TaskFilterSerializer(serializers.Serializer[None]):
     archived = serializers.BooleanField(required=False, default=False)
 
     def validate_assignee(self, value: str) -> str:
-        if value != "none" and not value.isdigit():
+        # isdecimal, not isdigit: "²" is a digit that int() refuses.
+        if value != "none" and not value.isdecimal():
             raise serializers.ValidationError("Use a user id or `none`.")
         return value

@@ -186,7 +186,14 @@ def test_list_filters_are_read_from_the_query_string(scenario: TeamScenario) -> 
 
 
 @pytest.mark.parametrize(
-    "params", [{"assignee": "me"}, {"due_after": "yesterday"}, {"status": "archived"}]
+    "params",
+    [
+        {"assignee": "me"},
+        # A digit for str.isdigit() that int() refuses: it must be a 400, not a server error.
+        {"assignee": "²"},
+        {"due_after": "yesterday"},
+        {"status": "archived"},
+    ],
 )
 def test_invalid_filters_answer_400(scenario: TeamScenario, params: dict[str, str]) -> None:
     response = client_for(scenario.member).get(TASKS_URL, params)
