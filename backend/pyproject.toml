@@ -13,6 +13,7 @@ dependencies = [
     "psycopg[binary]==3.3.9",
     "gunicorn==27.0.1",
     "whitenoise==6.12.0",
+    "django-stubs-ext==6.0.9",
 ]
 
 [dependency-groups]
@@ -20,8 +21,8 @@ dev = [
     "pytest>=8",
     "pytest-django==4.14.0",
     "pytest-cov>=6",
-    "django-stubs[compatible-mypy]==6.1.2",
-    "djangorestframework-stubs==3.18.2",
+    "django-stubs[compatible-mypy]==6.0.9",
+    "djangorestframework-stubs==3.18.0",
     "ruff==0.17.5",
     "pre-commit>=4",
 ]
@@ -87,5 +88,8 @@ select = [
 # Framework hooks (DRF view methods, admin overrides) must accept arguments they may not use.
 "**/views.py" = ["ARG002"]
 "**/admin.py" = ["ARG002"]
-"**/tests/*" = ["S101", "S105", "S106"]  # asserts and literal test passwords
+# Django reads Meta options and REQUIRED_FIELDS as plain class attributes; they are never mutated.
+"**/models.py" = ["RUF012"]
+# Tests: asserts, literal test passwords, and fixtures requested only for their side effect (db).
+"**/tests/*" = ["S101", "S105", "S106", "ARG001"]
 "conftest.py" = ["S105", "S106"]
