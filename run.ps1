@@ -30,6 +30,7 @@ switch ($Command) {
         Write-Host "Health:       $base/api/v1/health"
         Write-Host "Swagger UI:   $base/api/v1/docs"
         Write-Host "Django admin: $base/admin/"
+        Write-Host "Demo logins:  README.md, section `"Demo credentials`" (demo only)"
     }
     "down" {
         docker compose down

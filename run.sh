@@ -26,6 +26,7 @@ case "${1:-up}" in
         echo "Health:       ${base}/api/v1/health"
         echo "Swagger UI:   ${base}/api/v1/docs"
         echo "Django admin: ${base}/admin/"
+        echo "Demo logins:  README.md, section \"Demo credentials\" (demo only)"
         ;;
     down)
         docker compose down
