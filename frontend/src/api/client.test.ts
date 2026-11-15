@@ -114,6 +114,26 @@ describe("token refresh", () => {
     expect(calls.map((c) => c.url)).toEqual(["/api/v1/teams", "/api/v1/auth/token/refresh"]);
   });
 
+  it("retries with the token another tab stored meanwhile instead of ending the session", async () => {
+    storeTokens(jwt("old"), "refresh-1");
+    const onExpired = vi.fn();
+    setSessionExpiredHandler(onExpired);
+    stubFetch((call) => {
+      if (call.url.endsWith("/auth/token/refresh")) {
+        const { refresh } = call.body as { refresh: string };
+        if (refresh === "refresh-2") return json(200, { access: jwt("new"), refresh: "refresh-3" });
+        // Another tab rotated refresh-1 a moment ago and stored refresh-2.
+        localStorage.setItem("taskmanager.refresh", "refresh-2");
+        return json(401, { code: "token_not_valid", message: "Token is blacklisted", details: null });
+      }
+      return call.token?.endsWith(".new") ? json(200, []) : unauthorized();
+    });
+
+    await expect(apiRequest("/teams")).resolves.toEqual([]);
+    expect(onExpired).not.toHaveBeenCalled();
+    expect(getRefreshToken()).toBe("refresh-3");
+  });
+
   it("renews first when there is no access token yet (after a reload), sparing a 401", async () => {
     localStorage.setItem("taskmanager.refresh", "refresh-1");
     const access = jwt("fresh");

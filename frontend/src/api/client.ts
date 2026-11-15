@@ -70,6 +70,10 @@ let refreshing: Promise<boolean> | null = null;
  * Renews the access token. Concurrent callers share one request: the API rotates the refresh token
  * and blacklists the old one, so a second parallel refresh would be refused and end the session.
  * Resolves false, and ends the session, when the API refuses the refresh token.
+ *
+ * Other tabs share the refresh token (localStorage) but not this single request. When a refresh is
+ * refused because another tab rotated the token meanwhile, it is tried once more with the new one
+ * instead of clearing it, which would log every tab out.
  */
 export function refreshSession(): Promise<boolean> {
   refreshing ??= doRefresh().finally(() => {
@@ -78,11 +82,13 @@ export function refreshSession(): Promise<boolean> {
   return refreshing;
 }
 
-async function doRefresh(): Promise<boolean> {
+async function doRefresh(retried = false): Promise<boolean> {
   const refresh = getRefreshToken();
   if (!refresh) return false;
   const response = await send("/auth/token/refresh", { method: "POST", body: { refresh } }, null);
   if (!response.ok) {
+    const stored = getRefreshToken();
+    if (!retried && stored !== null && stored !== refresh) return doRefresh(true);
     clearTokens();
     onSessionExpired();
     return false;
