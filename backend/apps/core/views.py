@@ -1,10 +1,14 @@
 from django.db import DatabaseError, connection
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.views.defaults import page_not_found
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from apps.core.exception_handler import error_body
 
 
 def database_is_reachable() -> bool:
@@ -33,3 +37,10 @@ class HealthView(APIView):
         if database_is_reachable():
             return Response({"status": "ok"})
         return Response({"status": "unavailable"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+def not_found(request: HttpRequest, exception: Exception) -> HttpResponse:
+    """Django's 404 handler: unknown API paths answer the JSON error shape, the rest HTML."""
+    if request.path.startswith("/api/"):
+        return JsonResponse(error_body("not_found", "Not found."), status=404)
+    return page_not_found(request, exception)

@@ -10,3 +10,6 @@ urlpatterns = [
     path("api/v1/", include("apps.teams.urls")),
     path("api/v1/", include("apps.tasks.urls")),
 ]
+
+# Used when DEBUG is off; with DEBUG on, Django shows its technical 404 page instead.
+handler404 = "apps.core.views.not_found"
