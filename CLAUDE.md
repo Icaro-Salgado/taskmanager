@@ -10,9 +10,9 @@ public files.
 
 ## Where we are
 
-The design is closed and was reviewed twice (journal entries 10 and 11). The work now is the build:
-`docs/implementation-prompt.md`, phase by phase, starting at phase 1. Do not reopen a design decision; if the build
-shows one is wrong, stop and ask the owner.
+The design is closed and was reviewed twice (journal entries 10 and 11). The build in
+`docs/implementation-prompt.md` is complete (phases 1 to 9). Work from here is fixes and backlog items the owner
+asks for. Do not reopen a design decision; if one proves wrong, stop and ask the owner.
 
 ## Working agreement
 
@@ -65,18 +65,69 @@ Rules:
 
 # Part 2: Application rules
 
-To be rewritten with the essential rules of the code as built (plan phase 9). Until then, the full rules are in
-`docs/implementation-prompt.md`. The essentials:
+The code as built. The specification and its reasons: `docs/implementation-prompt.md`, `README.md` (Part 2).
 
-- Stack: Python 3.12+, Django 6.x, DRF, SimpleJWT, drf-spectacular, PostgreSQL, Celery and Redis, React with
-  TypeScript and Vite, TanStack Query, uv, ruff, mypy (strict), pre-commit, pytest, Docker Compose.
-- Layering per app: `services.py` (the only write path), `selectors.py` (reads), `policies.py` (permissions),
-  thin API layer. Models hold persistence and simple constraints only.
-- Apps, in dependency order: `core`, `accounts`, `teams`, `notifications`, `tasks`. An app imports only from the
-  ones before it; the one exception is documented in the plan.
-- Global admin is `is_superuser`. Team roles (leader, member) live in `Membership`.
-- An assignee must be a member of the task's team. Removing a member unassigns their tasks in the same transaction.
-- Done and canceled are terminal; only reopen leaves them. "Archived" is a query condition, not a status.
-- Teams and tasks are soft-deleted (`deleted_at`) and restored only by a database query.
-- Security: OWASP Top 10 awareness, server-side authorization for every action, rate limiting (stricter on the
-  token endpoint), input validated in serializers and invariants again in services.
+## Stack and layout
+
+Python 3.12+, Django 6.0, DRF, SimpleJWT, drf-spectacular, PostgreSQL 17, Celery and Redis (also the rate limit
+cache), gunicorn; React 19, TypeScript (strict), Vite, TanStack Query, React Router, Tailwind; nginx; uv, ruff,
+mypy (strict), pre-commit, pytest, vitest, Docker Compose. `backend/`, `frontend/`, `docs/`.
+
+## Layering (backend)
+
+- Per app: `services.py` is the only write path; `selectors.py` reads; `policies.py` holds permission rules as
+  pure functions (no errors raised); serializers validate input shape; views are thin and call services and
+  selectors. Models hold persistence and simple constraints only. No business rule in a view or serializer.
+- Services raise the domain errors in `apps/core/exceptions.py` and import nothing from DRF;
+  `apps/core/exception_handler.py` maps them to HTTP. Every error is `{code, message, details}`. A resource the
+  user cannot see answers 404; one they can see but may not change answers 403.
+- Apps in dependency order: `core`, `accounts`, `teams`, `notifications`, `tasks`; each imports only from earlier
+  ones. One exception: `teams.services.remove_member` calls `tasks.services.unassign_member_tasks` in the same
+  transaction (an explicit call, not a signal). `notifications` only stores and delivers; who is notified about
+  what is decided in `tasks`.
+- The Django admin site runs the same services: no inlines, `delete_selected` disabled, tasks read-only, users
+  never deleted.
+
+## Domain rules
+
+- Users: email login, stored lowercase; deactivated, never deleted. Global admin is `is_superuser`. No sign-up.
+- Teams: name unique (ignoring case) among active teams, max 30; `archive_after_days` default 15. A team may have
+  no leader. Roles (`leader`, `member`) live in `Membership`, unique per (team, user).
+- Tasks: statuses `todo`, `in_progress`, `blocked`, `done`, `canceled`. Done and canceled are terminal and
+  read-only; only reopen leaves them (to `in_progress`, clearing `completed_at`). A task cannot be created
+  finished. "Archived" is a query (finished more than `archive_after_days` ago), never a status. Overdue: due
+  before today in `TIME_ZONE` and not finished.
+- An assignee is an active member of the task's team, checked on every write that sets it. Removing a member
+  (or leaving) unassigns their tasks in the same transaction.
+- Permissions: only current members (and admins) have rights on a team's tasks. Create: any member. Edit and
+  reopen: creator, assignee, leader, admin. Delete: creator, leader, admin. Assign-self: members only, unassigned
+  unfinished tasks. Manage members: leaders and admins; anyone may leave. Delete a team: admins.
+- Soft delete for teams and tasks (`deleted_at`, `deleted_by`); selectors exclude them explicitly (no custom
+  default manager). Restored only by SQL (README).
+- Notifications: an assignment by someone else is queued with `transaction.on_commit`; a broker failure is logged
+  and the change is kept. The daily overdue job notifies the assignee and the team's leaders, grouped per person
+  and team, marks `overdue_notified_at`, and skips locked rows, so a rerun sends nothing new.
+
+## API and security
+
+- Under `/api/v1`. Tasks are paginated (20, max 100) and ordered by due date (empty last), then id. The task
+  payload carries `can_edit` and `can_delete` from the policies; the frontend never decides permissions itself.
+- JWT: 15-minute access token; refresh tokens rotate and are blacklisted on use, on logout and on password change.
+- Rate limits in Redis: login 5/min per client address, 300/min per user elsewhere. The api is reached only
+  through nginx (`DRF_NUM_PROXIES=1`); never publish the api port, or `X-Forwarded-For` can be forged.
+- Every endpoint is documented in the OpenAPI schema; a test fails on any schema warning.
+
+## Frontend
+
+All HTTP goes through `frontend/src/api/client.ts` (one shared token refresh, `ApiError` with the API's error
+shape). Access token in memory, refresh token in `localStorage`. Server data lives in TanStack Query; after a
+change, the task lists are invalidated. Features in `src/features/<area>/`, each with its `queries.ts`.
+
+## Run and test
+
+- `./run.sh` (up, down, test; `run.ps1` is untested) starts the stack and seeds it; app, API, Swagger and admin
+  on http://localhost:8080. Demo credentials: `README.md`.
+- Backend: `./run.sh test`, or in `backend/` with `.env` loaded: `uv run pytest`, `ruff check`, `mypy .`.
+  Coverage must stay at or above 80%. Query-count tests guard the list endpoints against N+1.
+- Frontend, in `frontend/`: `npm run lint`, `npm test`, `npm run build`.
+- Tests run with throttling off (rate limit tests opt back in) and Celery eager.
