@@ -4,8 +4,9 @@ from datetime import timedelta
 from pathlib import Path
 
 import django_stubs_ext
+from celery.schedules import crontab
 
-from config.env import env_bool, env_int, env_list, env_str
+from config.env import env_bool, env_int, env_list, env_str, env_time
 
 # Lets classes that are generic only in the type stubs (ModelAdmin[Team]) be subscripted.
 django_stubs_ext.monkeypatch()
@@ -96,6 +97,21 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": env_str("REDIS_URL", "redis://localhost:6379/0"),
     }
+}
+
+# Celery: Redis is the broker. Jobs only write to the database, so no result backend is kept.
+CELERY_BROKER_URL = env_str("REDIS_URL", "redis://localhost:6379/0")
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TIMEZONE = TIME_ZONE
+# Workers log through the LOGGING setting below, like the api, instead of Celery's own setup.
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+_OVERDUE_JOB_TIME = env_time("OVERDUE_JOB_TIME", "08:00")
+CELERY_BEAT_SCHEDULE = {
+    "notify-overdue-tasks": {
+        "task": "apps.tasks.tasks.notify_overdue_tasks",
+        "schedule": crontab(hour=_OVERDUE_JOB_TIME.hour, minute=_OVERDUE_JOB_TIME.minute),
+    },
 }
 
 STATIC_URL = "static/"

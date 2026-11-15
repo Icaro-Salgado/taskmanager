@@ -25,6 +25,7 @@ dev = [
     "djangorestframework-stubs==3.18.0",
     "ruff==0.17.5",
     "pre-commit>=4",
+    "celery-types==0.26.0",
 ]
 
 [tool.uv]

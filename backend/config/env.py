@@ -1,6 +1,7 @@
 """Typed readers for environment variables. Settings read every value through these."""
 
 import os
+from datetime import time
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -35,3 +36,12 @@ def env_bool(name: str, default: bool) -> bool:
 def env_list(name: str, default: str) -> list[str]:
     raw = os.environ.get(name, default)
     return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def env_time(name: str, default: str) -> time:
+    """A time of day written as HH:MM, for example 08:00."""
+    raw = env_str(name, default)
+    try:
+        return time.fromisoformat(raw)
+    except ValueError as exc:
+        raise ImproperlyConfigured(f"Environment variable {name} must be a time as HH:MM.") from exc

@@ -63,5 +63,26 @@ services:
       timeout: 3s
       retries: 20
 
+  # Runs the Celery tasks: assignment notifications and the overdue job.
+  worker:
+    <<: *backend
+    command: celery -A config worker --loglevel INFO --concurrency 2
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  # Queues the daily overdue job. Exactly one beat may run, or the job would be queued twice.
+  # Its schedule state goes to /tmp, outside the code directory.
+  beat:
+    <<: *backend
+    command: celery -A config beat --loglevel INFO --schedule /tmp/celerybeat-schedule
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
 volumes:
   db-data:

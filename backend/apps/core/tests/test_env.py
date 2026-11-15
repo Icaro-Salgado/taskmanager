@@ -1,7 +1,9 @@
+from datetime import time
+
 import pytest
 from django.core.exceptions import ImproperlyConfigured
 
-from config.env import env_bool, env_int, env_list, env_str
+from config.env import env_bool, env_int, env_list, env_str, env_time
 
 
 def test_env_str_reads_the_variable(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -71,3 +73,18 @@ def test_env_list_splits_and_trims(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert env_list("SAMPLE", default="") == ["a", "b", "c"]
     assert env_list("MISSING", default="") == []
+
+
+def test_env_time_parses_hours_and_minutes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SAMPLE", "18:30")
+    monkeypatch.delenv("MISSING", raising=False)
+
+    assert env_time("SAMPLE", "08:00") == time(18, 30)
+    assert env_time("MISSING", "08:00") == time(8, 0)
+
+
+def test_env_time_rejects_garbage(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SAMPLE", "8 o'clock")
+
+    with pytest.raises(ImproperlyConfigured, match="must be a time as HH:MM"):
+        env_time("SAMPLE", "08:00")
