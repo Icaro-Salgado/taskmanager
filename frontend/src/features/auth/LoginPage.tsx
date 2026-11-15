@@ -1,19 +1,21 @@
 import { useState, type FormEvent } from "react";
-import { Navigate } from "react-router";
+import { Navigate, useLocation } from "react-router";
 
 import { Button } from "../../components/Button";
 import { ErrorMessage } from "../../components/ErrorMessage";
 import { TextField } from "../../components/TextField";
 import { useAuth } from "./authContext";
+import { returnPath } from "./returnPath";
 
 export function LoginPage() {
   const auth = useAuth();
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<unknown>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  if (auth.status === "authenticated") return <Navigate to="/" replace />;
+  if (auth.status === "authenticated") return <Navigate to={returnPath(location.state)} replace />;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

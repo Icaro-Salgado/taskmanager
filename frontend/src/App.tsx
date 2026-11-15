@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 
 import { AppLayout } from "./components/AppLayout";
 import { Loading } from "./components/Loading";
@@ -29,7 +29,12 @@ export function App() {
 
 function RequireAuth() {
   const auth = useAuth();
+  const location = useLocation();
   if (auth.status === "loading") return <Loading />;
-  if (auth.status === "anonymous") return <Navigate to="/login" replace />;
+  if (auth.status === "anonymous") {
+    // The login page sends the user back here (a link from a notification, a bookmark).
+    const from = location.pathname + location.search;
+    return <Navigate to="/login" replace state={{ from }} />;
+  }
   return <AppLayout />;
 }
