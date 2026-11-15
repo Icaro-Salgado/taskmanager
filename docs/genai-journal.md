@@ -218,3 +218,8 @@ N. <type> | phase <P> | <model> | section <S of GENAI.md> | commit <hash>
     Output: every service healthy, `Seed done: 42 new tasks.`, app and demo login 200; `249 passed`; deploy check
     `4 issues` (W004, W008, W012, W016: HTTPS only); no symlinks; no `.env`, no private key ever committed
     Note: the README's restore SQL was run inside a transaction and rolled back (`UPDATE 1`).
+38. validation | phase 9 | Claude Opus 5.5 | section 1 | commit e259a10
+    Command: `git diff CLAUDE.md` shown to the owner before the commit; `git worktree list`, `git branch`
+    Output: owner: "approve". Part 2 now holds the rules as built (layering, domain rules, permissions, API and
+    security, frontend, run and test). The three agent worktrees and six merged branches were removed after
+    checking each was clean and its work was on `develop`.
