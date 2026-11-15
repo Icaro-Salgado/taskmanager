@@ -40,3 +40,7 @@ if it would change the foundation, it becomes a design topic instead of a backlo
   (or an ETag) with each change and answer 409 when the task changed in between.
 - Cursor pagination for the board columns. "Load more" asks by page number, so a task that moves while someone
   pages can show twice (filtered out on screen) or be skipped until the next refresh.
+- A change-password screen in the frontend. The endpoint exists (`/api/v1/auth/password`) and revokes older
+  tokens; the UI does not offer it yet.
+- Deployment settings for HTTPS, switched on by one environment variable: HSTS, SSL redirect, secure session and
+  CSRF cookies (the four `manage.py check --deploy` warnings). Off for the local HTTP demo.
