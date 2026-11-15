@@ -54,8 +54,8 @@ services:
       <<: *backend-env
       # nginx (the frontend service) is in front and sets X-Forwarded-For to the client address.
       DRF_NUM_PROXIES: "1"
-    ports:
-      - "${API_PORT:-8000}:8000"
+    # No published port: every request goes through nginx. A port open on the host would let a
+    # client send its own X-Forwarded-For and escape the login rate limit.
     depends_on:
       migrate:
         condition: service_completed_successfully
