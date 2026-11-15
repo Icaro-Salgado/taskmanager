@@ -58,6 +58,8 @@ owner reads the code and an independent review runs in a fresh session.
 - Phase 3 (tasks): permission matrix, invariants, filters and query-count tests, entry 17.
 - Review checkpoint 1: the owner exercised every endpoint against the running stack with an API client
   collection (one request per rule, each with its expected status) and inspected the database before moving on.
+  The decisions taken during phases 2 to 4 were approved in one batch (entries 19 to 22). From then on, work
+  stopped for review is left uncommitted so the owner reviews the diff before the commit (entry 23).
 - Phase 4 (rate limits, API docs): limit tests and a schema test that fails on any undocumented endpoint, entry 18.
 
 ## 5. What was corrected or improved
@@ -69,6 +71,8 @@ Code stage: each review finding, its fix and the commit that fixed it.
 - Phase 1: nine findings in the scaffolding, found during the owner's walkthrough and fixed before the first
   commit (entry 13). The most serious: with DEBUG off, Django's default logging dropped the traceback of every
   server error; a test now runs a fresh interpreter and checks the traceback reaches stderr.
+- Phase 1, found in phase 2: the type stubs described Django 6.1 while the project runs 6.0, so mypy checked the
+  code against the wrong API; repinned to the 6.0 line (entry 19).
 
 ## 6. Edge cases, authentication and validation
 
@@ -107,6 +111,7 @@ Phase 4 (entry 18):
 | A forged `X-Forwarded-For` does not reset the login count | `test_throttling.py::test_a_forged_forwarded_address_...` |
 | 300 requests per minute per user elsewhere; the health check is exempt | `test_throttling.py::test_the_general_limit_is_per_user`, `::test_the_health_check_...` |
 | Every endpoint documents its request, responses and errors | `core/tests/test_schema.py::test_the_schema_generates_without_warnings` |
+| Unknown `/api/` paths answer the JSON error shape; other paths keep the HTML page | `core/tests/test_not_found.py` |
 
 ## 7. Performance and idiomatic quality
 

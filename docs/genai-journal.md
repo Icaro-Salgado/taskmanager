@@ -127,3 +127,25 @@ N. <type> | phase <P> | <model> | section <S of GENAI.md> | commit <hash>
     Output: `191 passed`, `Total coverage: 100.00%`; mypy `Success: no issues found in 76 source files`; schema
     with no warnings; logins `401 401 401 401 401 429`, `Retry-After: 59`, key `throttle_login_172.19.0.1` in Redis
     Note: before annotations, schema generation had 62 errors (APIViews it could not read); now a test fails on any.
+19. correction | phase 1 | Claude Opus 5.5 | section 5 | commit 7ea1d39
+    Phase 1 (Claude Fable 5.2) pinned django-stubs 6.1.x, which describe Django 6.1; the project runs 6.0.10, so
+    mypy checked the code against the wrong API (an admin method signature differs between the two). Fixed by
+    pinning django-stubs and django-stubs-ext 6.0.9, djangorestframework-stubs 3.18.0 and mypy 2.3.1. Approved
+    at review checkpoint 1. Owner: "Yes".
+20. decision | phases 2 and 3 | Claude, approved by owner | section 6 | commits 7ea1d39, 4ecec2a
+    Approved at review checkpoint 1: changing the password blacklists every refresh token and returns a new pair;
+    team names unique ignoring case (owner: "Alpha and ALPHA should not be possible"); admin site superuser-only,
+    bulk delete off; errors are `{code, message, details}`, 409 for state conflicts; a PATCH that changes a task's
+    team answers 400; member removal also unassigns deleted tasks; assign-self refused on finished tasks and to
+    non-member admins; title max 200, page size 20 (max 100), `assignee=none`. Owner: "agreed", "Approved".
+21. decision | phase 2 | owner | section 6 | commit 5f02c98
+    Owner: "On adding a member we should always respond ok, so the user cant find which members we have". Claude:
+    an immediate add still shows in the members list; only a pending invitation for every email hides it. Owner:
+    "option A but backlog". Until it is built, unknown or inactive emails answer 404 `user_not_found`.
+22. decision | phase 4 | Claude, approved by owner | sections 6 and 7 | commits d76ab90, 0f571cc
+    Health check not throttled; `X-Forwarded-For` ignored until a proxy is configured; SimpleJWT views subclassed
+    only to document their errors; unknown `/api/` paths answer the JSON error shape; tasks will carry `can_edit`
+    and `can_delete` in phase 7; Swagger UI assets from the CDN, self-hosting in the backlog (owner: "backlog").
+23. decision | process | owner | section 4 | commit 5f02c98
+    Owner: "when you prompt me for review, do not commit yet (you can run pre-commit so it has the fixes) but do not
+    commit, for me is easier to review that way". Added to `CLAUDE.md`.
