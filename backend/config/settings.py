@@ -1,0 +1,107 @@
+"""Django settings. Deployment-specific values come from the environment (see `.env.example`)."""
+
+from pathlib import Path
+
+from config.env import env_bool, env_int, env_list, env_str
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+SECRET_KEY = env_str("DJANGO_SECRET_KEY")
+DEBUG = env_bool("DJANGO_DEBUG", default=False)
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1")
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", default="")
+
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "rest_framework",
+    "apps.core",
+]
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+ROOT_URLCONF = "config.urls"
+WSGI_APPLICATION = "config.wsgi.application"
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env_str("POSTGRES_DB", "taskmanager"),
+        "USER": env_str("POSTGRES_USER", "taskmanager"),
+        "PASSWORD": env_str("POSTGRES_PASSWORD"),
+        "HOST": env_str("POSTGRES_HOST", "localhost"),
+        "PORT": env_int("POSTGRES_PORT", 5432),
+    }
+}
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+LANGUAGE_CODE = "en-us"
+USE_I18N = False
+USE_TZ = True
+TIME_ZONE = env_str("TIME_ZONE", "America/Sao_Paulo")
+
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
+
+# Everything goes to stderr, so it shows in `docker compose logs`. Django's default would send
+# request errors only to mail_admins when DEBUG is off, and their tracebacks would be lost.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "plain": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"},
+    },
+    "handlers": {
+        "stderr": {"class": "logging.StreamHandler", "formatter": "plain"},
+    },
+    "root": {"handlers": ["stderr"], "level": env_str("LOG_LEVEL", "INFO")},
+    "loggers": {
+        # Replaces Django's default handlers for its own loggers; records reach stderr through root.
+        "django": {"handlers": [], "level": "INFO", "propagate": True},
+    },
+}
+
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+}

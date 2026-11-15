@@ -1,0 +1,91 @@
+[project]
+name = "taskmanager-backend"
+version = "0.1.0"
+description = "Task management API: teams, roles, task assignment and notifications."
+requires-python = ">=3.12"
+dependencies = [
+    "django==6.0.10",
+    "djangorestframework==3.18.3",
+    "djangorestframework-simplejwt==5.5.1",
+    "drf-spectacular==0.30.0",
+    "celery==5.7.0",
+    "redis==8.1.0",
+    "psycopg[binary]==3.3.9",
+    "gunicorn==27.0.1",
+    "whitenoise==6.12.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-django==4.14.0",
+    "pytest-cov>=6",
+    "django-stubs[compatible-mypy]==6.1.2",
+    "djangorestframework-stubs==3.18.2",
+    "ruff==0.17.5",
+    "pre-commit>=4",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py"]
+addopts = "--strict-markers --cov --cov-report=term-missing"
+filterwarnings = [
+    "error",
+    # WhiteNoise warns when collectstatic has not run; tests do not serve static files.
+    "ignore:No directory at:UserWarning",
+]
+
+[tool.coverage.run]
+source = ["apps", "config"]
+branch = true
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "config/wsgi.py",
+]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+disallow_any_explicit = true
+warn_unreachable = true
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F",  # pycodestyle, pyflakes
+    "I",            # import order
+    "N",            # naming
+    "UP",           # modern syntax
+    "B",            # bugbear
+    "S",            # security (bandit)
+    "ANN",          # type annotations present
+    "DJ",           # Django
+    "DTZ",          # naive datetimes
+    "PT",           # pytest style
+    "SIM", "C4", "RET", "ARG", "T20", "TID", "RUF",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Framework hooks (DRF view methods, admin overrides) must accept arguments they may not use.
+"**/views.py" = ["ARG002"]
+"**/admin.py" = ["ARG002"]
+"**/tests/*" = ["S101", "S105", "S106"]  # asserts and literal test passwords
+"conftest.py" = ["S105", "S106"]

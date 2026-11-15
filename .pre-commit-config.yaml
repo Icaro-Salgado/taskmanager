@@ -1,0 +1,34 @@
+# Tool versions for ruff and mypy come from backend/uv.lock, so the hooks, CI and the editor agree.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: check-symlinks
+      - id: destroyed-symlinks
+      - id: detect-private-key
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --project backend ruff check --force-exclude
+        language: system
+        types: [python]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --project backend ruff format --force-exclude
+        language: system
+        types: [python]
+      - id: mypy
+        name: mypy (strict)
+        # The Django plugin imports settings, which require these two values. Type checking never
+        # connects to the database, so placeholders are enough and no .env is needed.
+        entry: env DJANGO_SECRET_KEY=typecheck-only POSTGRES_PASSWORD=typecheck-only uv run --directory backend mypy .
+        language: system
+        types: [python]
+        pass_filenames: false
