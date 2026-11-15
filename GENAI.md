@@ -72,6 +72,10 @@ owner reads the code and an independent review runs in a fresh session.
   command run twice (the second run sends nothing) and the endpoints over HTTP, entry 25.
 - Phase 6 (demo seed): the suite re-run, and the seed run on the real stack twice, the second run adding nothing.
   Running it there exposed a startup-order bug the agent's isolated tests could not see, entry 28.
+- Phase 7 (frontend), review checkpoint 2: the branch was merged and every check re-run (backend, eslint, tsc,
+  vitest, build), then the stack was exercised through nginx with curl, entry 31. Claude then walked the owner
+  through the frontend file by file, collecting open questions in a working file; reading it that way found
+  three of the four fixes (entry 34). The owner approved the batch of UI decisions at once (entry 35).
 
 ## 5. What was corrected or improved
 
@@ -87,6 +91,12 @@ Code stage: each review finding, its fix and the commit that fixed it.
 - Phase 5: the agent's code queued the assignment notification after the commit with no error handling, so a
   broker outage turned a saved change into a 500. Found by the reviewing model reading the diff, fixed with a
   test, and checked against an unreachable broker (entry 26).
+- Phase 7: three rate limit tests passed in the agent's worktree and failed in the container, because the compose
+  api service now trusts one proxy; the tests now set the proxy count themselves (entry 32).
+- Phase 7: with the api port still published, a forged `X-Forwarded-For` escaped the login limit (seven tries,
+  seven `401`). The api is no longer published; nginx is the only entry point (entry 33).
+- Phase 7, found in the guided review: two tabs could log each other out when refreshing at once, a deep link was
+  lost at login, and the bell kept a fallback for an API that now exists (entry 34).
 
 ## 6. Edge cases, authentication and validation
 
@@ -149,6 +159,17 @@ Phase 6, demo seed (entries 28 and 30):
 | The soft-deleted team and its tasks stay hidden | `::test_the_soft_deleted_team_...` |
 | Running it twice changes nothing | `::test_running_the_seed_twice_changes_no_row_counts` |
 
+Phase 7, frontend (entries 31 to 35):
+
+| Rule | Covered by |
+|---|---|
+| Each task says whether the caller may edit or delete it, from the task policies | `backend/apps/tasks/tests/test_api.py::test_each_task_says_what_the_caller_may_do`, `::test_mutations_answer_the_permissions_of_the_caller` |
+| Behind nginx, the login limit counts per client address; a forged header does not reset it | `backend/apps/accounts/tests/test_throttling.py::test_behind_one_proxy_...`, `::test_a_forged_forwarded_address_...` |
+| Concurrent 401s share one token refresh; a refused refresh ends the session | `frontend/src/api/client.test.ts` ("token refresh") |
+| A refresh refused because another tab rotated the token retries with the new one | `client.test.ts::retries with the token another tab stored meanwhile...` |
+| Login and refresh calls never trigger a refresh; API errors keep their code, message and field details | `client.test.ts::never refreshes for the token endpoints...`, `client.test.ts` ("errors") |
+| After login the user returns to the page asked for, never outside the app | `frontend/src/features/auth/returnPath.test.ts` |
+
 ## 7. Performance and idiomatic quality
 
 Pending. Query-count tests on the list endpoints, one `EXPLAIN ANALYZE` of the task list query and the index
@@ -165,3 +186,6 @@ decision it led to, the output of `manage.py check --deploy`, the mypy strict re
   tasks and the leaders in two queries and marks the tasks with one update, instead of one query per task.
 - Indexes (entry 29): `EXPLAIN ANALYZE` on 200k generated tasks. A member's list needs no index; a partial index
   would speed up the admin all-teams page, but the owner kept it for later instead of adding it before it is needed.
+- Frontend (entry 31): `can_edit` and `can_delete` are computed from the role the task query already annotates,
+  so the task list stays at two queries (`test_list_queries_do_not_grow_with_the_number_of_tasks`). TypeScript in
+  strict mode, eslint, vitest and the build run in CI next to the backend checks (entry 35).

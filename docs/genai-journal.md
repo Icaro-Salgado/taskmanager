@@ -186,3 +186,29 @@ N. <type> | phase <P> | <model> | section <S of GENAI.md> | commit <hash>
     Seed rows are matched by team and title and never updated, so dates stay relative to the first run; finished
     tasks, teams, leader memberships and the deleted team are written straight to the database (the services
     forbid those states); demo content lives in `apps/tasks/demo_data.py`. Owner: "Approve all".
+31. validation | phase 7 | Claude Opus 5.5 (agent, merge, review, fixes) | sections 4, 6 | commits 0e09fc6 to 77c2eff
+    Command: `./run.sh test`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `./run.sh up`,
+    curl through nginx (:8080) to the app, login, tasks, notifications and the admin login with its CSRF token
+    Output: `249 passed`, `Total coverage: 99.93%`; eslint and tsc clean; vitest `14 passed`; build OK; tasks carry
+    `can_edit`/`can_delete`; unread 2, mark read 200, unread 1; admin login 302 then 200
+32. correction | phase 7 | Claude Opus 5.5 | section 5 | commit 3e44cb0
+    After the merge, three login limit tests failed in the container only: the compose api service now trusts
+    one proxy (`DRF_NUM_PROXIES=1`) and the tests assumed none. Each test now sets the count; one more test covers
+    the limit per forwarded address behind nginx.
+33. correction | phase 7 | Claude Fable 5.2 (found), Claude Opus 5.5 (measured, fixed) | section 5 | commit 5dae757
+    The api port stayed published while the api trusted one proxy, so a client could send its own
+    `X-Forwarded-For`: seven tries on :8000 answered `401` seven times, through nginx `401 x5, 429 429`. Owner
+    chose to stop publishing it; nginx is the only entry point. After the fix :8000 refuses connections.
+34. correction | phase 7 | Claude Opus 5.5 | section 5 | commits e107c41, 270afb5, 383e26f
+    Found while walking the owner through the frontend: two tabs refreshing at once logged each other out (the
+    refused tab cleared the token the other had just stored; a test now fails without the fix); a deep link was
+    lost at login; the bell kept a 404 fallback written before the notifications API existed. All three fixed.
+35. decision | phase 7 | Claude, approved by owner | sections 1, 6 | commits 0e09fc6, 764ed1e, 77c2eff
+    Approved at review checkpoint 2 ("Approved all"): access token renewed 30 s before expiry; retries only on
+    network errors; bell polled every 60 s; `window.confirm` before delete, remove and leave; no change-password
+    screen; Undo after finishing a task reopens it (always `in_progress`); one request per board column; frontend
+    checked in CI. To the backlog: Redis-down behaviour, filters in the URL, lost updates, cursor pagination.
+36. decision | phase 7 | owner | sections 1, 6 | commit 0e09fc6
+    Open topics answered by the owner before phase 7 (reconstructed; the exact words were not kept): the full
+    planned UI scope, the access token in memory and the refresh token in localStorage (trade-off in
+    `frontend/src/api/tokens.ts`), Tailwind CSS for styling.
