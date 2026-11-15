@@ -20,3 +20,11 @@ if it would change the foundation, it becomes a design topic instead of a backlo
   covers restorable deletes.
 - Drag and drop on the task board (move a card between columns to change its status). For now the status changes
   through a control on the card.
+- Do not reveal which emails have accounts when a leader adds a member (owner's choice, option "a"). Every add
+  answers 202 with the same body and creates a pending invitation for the email; it becomes a membership at the
+  user's next login or when an admin creates the account, so existing and unknown emails look the same to the
+  leader. Needs an `Invitation` table, list and cancel endpoints, and a hook at login and at account creation.
+  Until then, an unknown or inactive email answers 404 `user_not_found`.
+- Follow-up: the invited user accepts or declines the invitation instead of joining automatically.
+- Serve the Swagger UI assets from the app (for example drf-spectacular-sidecar) instead of a public CDN, so the
+  API docs work offline.

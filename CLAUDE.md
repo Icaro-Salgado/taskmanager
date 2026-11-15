@@ -22,6 +22,9 @@ shows one is wrong, stop and ask the owner.
   not cover, and the two review checkpoints (after phases 3 and 7).
 - End of each phase: run tests and linters, report the real output, commit, add the validation entry to the
   journal, fill the matching parts of `GENAI.md`.
+- Whenever you stop for the owner to review (a checkpoint, or the end of a phase you stop at), do not commit:
+  run the pre-commit hooks so their fixes are in place, leave the changes in the working tree, and commit after
+  the owner approves. The journal entry that needs the commit hash is written then.
 - Review checkpoint: stop and tell the owner. The owner reads the core code and runs an independent review in a
   fresh session. Each finding is fixed in its own commit.
 - Ideas for later go to `docs/backlog.md`; do not build them unless asked.
