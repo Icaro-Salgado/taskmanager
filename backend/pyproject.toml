@@ -92,4 +92,4 @@ select = [
 "**/models.py" = ["RUF012"]
 # Tests: asserts, literal test passwords, and fixtures requested only for their side effect (db).
 "**/tests/*" = ["S101", "S105", "S106", "ARG001"]
-"conftest.py" = ["S105", "S106"]
+"conftest.py" = ["S105", "S106", "ARG001"]

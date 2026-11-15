@@ -6,6 +6,7 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.accounts.selectors import find_active_user_by_email
 from apps.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError
+from apps.tasks.services import unassign_member_tasks
 from apps.teams import policies
 from apps.teams.models import Membership, Role, Team
 
@@ -50,8 +51,14 @@ def change_role(*, actor: User, membership: Membership, role: Role) -> Membershi
 
 
 def remove_member(*, actor: User, membership: Membership) -> None:
-    """Removes a member, or lets a member leave. A team may end up with no leader."""
+    """Removes a member, or lets a member leave. A team may end up with no leader.
+
+    Their tasks in this team are unassigned in the same transaction, so an assignee is always a
+    member. This is the one call from `teams` into `tasks` (an explicit call, not a signal).
+    """
     _ensure_active(membership.team)
     if not policies.can_remove_member(actor, membership.team, membership.user):
         raise PermissionDeniedError("Only team leaders can remove other members.")
-    membership.delete()
+    with transaction.atomic():
+        unassign_member_tasks(team=membership.team, user=membership.user)
+        membership.delete()

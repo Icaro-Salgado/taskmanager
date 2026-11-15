@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.accounts",
     "apps.teams",
+    "apps.tasks",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
