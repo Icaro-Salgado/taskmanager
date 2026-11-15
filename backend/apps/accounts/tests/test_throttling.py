@@ -14,10 +14,19 @@ pytestmark = pytest.mark.django_db
 TOKEN_URL = "/api/v1/auth/token"
 
 
+def set_proxies(settings: Settings, count: int) -> None:
+    settings.REST_FRAMEWORK = {**django_settings.REST_FRAMEWORK, "NUM_PROXIES": count}
+
+
 @pytest.fixture(autouse=True)
 def throttling(settings: Settings) -> Iterator[None]:
-    """Turns throttling back on (conftest turns it off) with a cache local to the test."""
+    """Turns throttling back on (conftest turns it off) with a cache local to the test.
+
+    No proxy by default, whatever DRF_NUM_PROXIES says where the tests run (the compose api
+    service sets it to 1 for nginx).
+    """
     settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    set_proxies(settings, 0)
     cache.clear()
     yield
     cache.clear()
@@ -81,6 +90,19 @@ def test_a_forged_forwarded_address_does_not_reset_the_login_limit(api_client: A
         attempt(api_client, forwarded_for=f"203.0.113.{i}")
 
     assert attempt(api_client, forwarded_for="203.0.113.99") == 429
+
+
+def test_behind_one_proxy_the_limit_is_per_forwarded_address(
+    api_client: APIClient, settings: Settings
+) -> None:
+    """nginx replaces X-Forwarded-For with the client address, so each client has its own count."""
+    set_proxies(settings, 1)
+    create_user("alice@example.com")
+    for _ in range(5):
+        attempt(api_client, remote_addr="172.18.0.5", forwarded_for="203.0.113.1")
+
+    assert attempt(api_client, remote_addr="172.18.0.5", forwarded_for="203.0.113.1") == 429
+    assert attempt(api_client, remote_addr="172.18.0.5", forwarded_for="203.0.113.2") == 200
 
 
 def test_the_general_limit_is_per_user(monkeypatch: pytest.MonkeyPatch) -> None:
