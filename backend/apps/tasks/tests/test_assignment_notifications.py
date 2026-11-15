@@ -1,6 +1,9 @@
 from datetime import timedelta
+from unittest.mock import patch
 
+import pytest
 from django.utils import timezone
+from kombu.exceptions import OperationalError
 from pytest_django.fixtures import DjangoCaptureOnCommitCallbacks as CaptureCallbacks
 
 from apps.accounts.models import User
@@ -149,3 +152,22 @@ def test_the_new_assignee_reads_it_through_the_api(
     assert [(item["task"], item["message"]) for item in results] == [
         (task.pk, 'You were assigned task "Ship it".')
     ]
+
+
+def test_a_broker_outage_loses_the_notification_but_not_the_assignment(
+    scenario: TeamScenario,
+    django_capture_on_commit_callbacks: CaptureCallbacks,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    task = create_task(scenario.team, scenario.leader, title="Ship it")
+
+    with (
+        patch("apps.tasks.tasks.notify_assignment.delay", side_effect=OperationalError("down")),
+        django_capture_on_commit_callbacks(execute=True),
+    ):
+        assign(scenario.leader, task, scenario.member)  # must not raise
+
+    task.refresh_from_db()
+    assert task.assignee == scenario.member
+    assert messages_of(scenario.member) == []
+    assert "Assignment notification not queued" in caplog.text

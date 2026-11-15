@@ -1,5 +1,6 @@
 """The only write path for tasks. Every rule on tasks is enforced here, whatever the caller."""
 
+import logging
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
@@ -7,6 +8,7 @@ from typing import TypedDict
 
 from django.db import transaction
 from django.utils import timezone
+from kombu.exceptions import OperationalError
 
 from apps.accounts.models import User
 from apps.core.exceptions import (
@@ -20,6 +22,8 @@ from apps.notifications.services import create_notification
 from apps.tasks import policies, selectors
 from apps.tasks.models import TERMINAL_STATUSES, Status, Task
 from apps.teams.models import Membership, Team
+
+logger = logging.getLogger(__name__)
 
 
 class TaskChanges(TypedDict, total=False):
@@ -169,11 +173,25 @@ def _queue_assignment_notification(actor: User, task: Task) -> None:
     assignee_id = task.assignee_id
     if assignee_id is None or assignee_id == actor.pk:
         return
+    task_id = task.pk
+    transaction.on_commit(lambda: _publish_assignment_notification(task_id, assignee_id))
+
+
+def _publish_assignment_notification(task_id: int, assignee_id: int) -> None:
+    """Hands the job to the broker. The task is already committed, so a broker outage must not
+    fail the request: the notification is lost and the error is logged.
+    """
     # Imported here: the Celery task module imports this one.
     from apps.tasks.tasks import notify_assignment
 
-    task_id = task.pk
-    transaction.on_commit(lambda: notify_assignment.delay(task_id, assignee_id))
+    try:
+        notify_assignment.delay(task_id, assignee_id)
+    except OperationalError:
+        logger.exception(
+            "Assignment notification not queued (task %s, assignee %s): broker unreachable.",
+            task_id,
+            assignee_id,
+        )
 
 
 def send_assignment_notification(*, task_id: int, assignee_id: int) -> Notification | None:
