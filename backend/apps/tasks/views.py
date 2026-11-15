@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.auth import authenticated_user
+from apps.accounts.models import User
 from apps.core.schema import errors
 from apps.tasks import selectors, services
 from apps.tasks.models import Status
@@ -64,6 +65,12 @@ def _changes_from(data: Mapping[str, object]) -> TaskChanges:
     return changes
 
 
+def _task_response(actor: User, task_id: int, http_status: int = status.HTTP_200_OK) -> Response:
+    """The task as the actor sees it now, read again so the computed fields are current."""
+    task = selectors.get_visible_task(actor, task_id)
+    return Response(TaskSerializer(task, context={"viewer": actor}).data, status=http_status)
+
+
 class TaskListView(APIView):
     @extend_schema(
         operation_id="tasks_list",
@@ -73,10 +80,12 @@ class TaskListView(APIView):
         "no due date last. Archived tasks are left out unless `archived=true`.",
     )
     def get(self, request: Request) -> Response:
-        tasks = selectors.list_tasks(authenticated_user(request), _filters_from(request))
+        actor = authenticated_user(request)
+        tasks = selectors.list_tasks(actor, _filters_from(request))
         paginator = TaskPagination()
         page = paginator.paginate_queryset(tasks, request, view=self)
-        return paginator.get_paginated_response(TaskSerializer(page, many=True).data)
+        data = TaskSerializer(page, many=True, context={"viewer": actor}).data
+        return paginator.get_paginated_response(data)
 
     @extend_schema(
         request=TaskCreateSerializer,
@@ -96,15 +105,13 @@ class TaskListView(APIView):
             assignee_id=data["assignee"],
             due_date=data["due_date"],
         )
-        task = selectors.get_visible_task(actor, task.pk)
-        return Response(TaskSerializer(task).data, status=status.HTTP_201_CREATED)
+        return _task_response(actor, task.pk, http_status=status.HTTP_201_CREATED)
 
 
 class TaskDetailView(APIView):
     @extend_schema(operation_id="tasks_retrieve", responses={200: TaskSerializer, **errors(404)})
     def get(self, request: Request, task_id: int) -> Response:
-        task = selectors.get_visible_task(authenticated_user(request), task_id)
-        return Response(TaskSerializer(task).data)
+        return _task_response(authenticated_user(request), task_id)
 
     @extend_schema(
         request=TaskUpdateSerializer,
@@ -120,7 +127,7 @@ class TaskDetailView(APIView):
         services.update_task(
             actor=actor, task=task, changes=_changes_from(serializer.validated_data)
         )
-        return Response(TaskSerializer(selectors.get_visible_task(actor, task_id)).data)
+        return _task_response(actor, task_id)
 
     @extend_schema(responses={204: None, **errors(403, 404)})
     def delete(self, request: Request, task_id: int) -> Response:
@@ -138,7 +145,7 @@ class ReopenTaskView(APIView):
     def post(self, request: Request, task_id: int) -> Response:
         actor = authenticated_user(request)
         services.reopen_task(actor=actor, task=selectors.get_visible_task(actor, task_id))
-        return Response(TaskSerializer(selectors.get_visible_task(actor, task_id)).data)
+        return _task_response(actor, task_id)
 
 
 class AssignSelfView(APIView):
@@ -150,4 +157,4 @@ class AssignSelfView(APIView):
     def post(self, request: Request, task_id: int) -> Response:
         actor = authenticated_user(request)
         services.assign_self(actor=actor, task=selectors.get_visible_task(actor, task_id))
-        return Response(TaskSerializer(selectors.get_visible_task(actor, task_id)).data)
+        return _task_response(actor, task_id)

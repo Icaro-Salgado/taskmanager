@@ -24,7 +24,9 @@ switch ($Command) {
         docker compose up --build -d --wait
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         $apiPort = Read-Env "API_PORT" "8000"
+        $frontendPort = Read-Env "FRONTEND_PORT" "8080"
         Write-Host ""
+        Write-Host "App:          http://localhost:$frontendPort/"
         Write-Host "API:          http://localhost:$apiPort/api/v1/"
         Write-Host "Health:       http://localhost:$apiPort/api/v1/health"
         Write-Host "Swagger UI:   http://localhost:$apiPort/api/v1/docs"

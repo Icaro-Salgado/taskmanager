@@ -201,8 +201,11 @@ def count_queries(action: Callable[[], object]) -> int:
     return len(queries)
 
 
-def test_list_queries_do_not_grow_with_the_number_of_tasks(scenario: TeamScenario) -> None:
-    client = client_for(scenario.member)
+@pytest.mark.parametrize("viewer", ["member", "leader", "admin"])
+def test_list_queries_do_not_grow_with_the_number_of_tasks(
+    scenario: TeamScenario, viewer: str
+) -> None:
+    client = client_for(getattr(scenario, viewer))
     create_task(scenario.team, scenario.member, assignee=scenario.leader)
     few = count_queries(lambda: client.get(TASKS_URL))
     for index in range(10):
@@ -211,8 +214,56 @@ def test_list_queries_do_not_grow_with_the_number_of_tasks(scenario: TeamScenari
         create_task(scenario.team, user, assignee=user)
 
     many = count_queries(lambda: client.get(TASKS_URL))
+    first = client.get(TASKS_URL).json()["results"][0]
 
-    assert many == few == 2  # one count for the pagination, one page with its related rows
+    # One count for the pagination, one page with its related rows and the viewer's role, which
+    # answers can_edit and can_delete for every task.
+    assert many == few == 2
+    assert {"can_edit", "can_delete"} <= first.keys()
+
+
+def test_each_task_says_what_the_caller_may_do(scenario: TeamScenario) -> None:
+    assignee = create_user("assignee@example.com")
+    other = create_user("other@example.com")
+    add_membership(scenario.team, assignee)
+    add_membership(scenario.team, other)
+    task = create_task(scenario.team, scenario.member, assignee=assignee)
+    viewers = {
+        "creator": scenario.member,
+        "assignee": assignee,
+        "other member": other,
+        "leader": scenario.leader,
+        "admin (not a member)": scenario.admin,
+    }
+
+    def allowed(body: dict[str, object]) -> tuple[object, object]:
+        return body["can_edit"], body["can_delete"]
+
+    detail = {
+        name: allowed(client_for(user).get(task_url(task)).json()) for name, user in viewers.items()
+    }
+    listed = {
+        name: allowed(client_for(user).get(TASKS_URL).json()["results"][0])
+        for name, user in viewers.items()
+    }
+
+    expected = {
+        "creator": (True, True),
+        "assignee": (True, False),
+        "other member": (False, False),
+        "leader": (True, True),
+        "admin (not a member)": (True, True),
+    }
+    assert detail == listed == expected
+
+
+def test_mutations_answer_the_permissions_of_the_caller(scenario: TeamScenario) -> None:
+    task = create_task(scenario.team, scenario.leader)
+
+    taken = client_for(scenario.member).post(task_url(task, "assign-self")).json()
+
+    # Taking the task makes the member its assignee: they may now edit it, not delete it.
+    assert (taken["can_edit"], taken["can_delete"]) == (True, False)
 
 
 def test_tasks_are_read_only_in_the_admin_site(scenario: TeamScenario) -> None:

@@ -15,8 +15,10 @@ from django.db.models import (
     DurationField,
     ExpressionWrapper,
     F,
+    OuterRef,
     Q,
     QuerySet,
+    Subquery,
     Value,
 )
 from django.utils import timezone
@@ -46,14 +48,22 @@ def archived_condition(now: datetime) -> Q:
 
 
 def tasks_visible_to(user: User) -> QuerySet[Task]:
-    """Tasks of the active teams the user belongs to (every active team for an admin)."""
+    """Tasks of the active teams the user belongs to (every active team for an admin).
+
+    Each task is annotated with `is_overdue` and with `viewer_role`: the user's role in the task's
+    team, or None for an admin who is not a member. The serializer reads the role to answer the
+    edit and delete policies without a query per task.
+    """
     tasks = Task.objects.filter(deleted_at__isnull=True, team__deleted_at__isnull=True)
     if not user.is_superuser:
         tasks = tasks.filter(team__memberships__user=user)
     is_overdue = ExpressionWrapper(
         overdue_condition(timezone.localdate()), output_field=BooleanField()
     )
-    return tasks.select_related("team", "assignee", "created_by").annotate(is_overdue=is_overdue)
+    viewer_role = Membership.objects.filter(team=OuterRef("team_id"), user=user).values("role")[:1]
+    return tasks.select_related("team", "assignee", "created_by").annotate(
+        is_overdue=is_overdue, viewer_role=Subquery(viewer_role)
+    )
 
 
 def get_visible_task(user: User, task_id: int) -> Task:

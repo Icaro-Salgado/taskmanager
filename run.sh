@@ -19,7 +19,9 @@ case "${1:-up}" in
         ensure_env
         docker compose up --build -d --wait
         api_port="$(read_env API_PORT)"
+        frontend_port="$(read_env FRONTEND_PORT)"
         echo
+        echo "App:          http://localhost:${frontend_port:-8080}/"
         echo "API:          http://localhost:${api_port:-8000}/api/v1/"
         echo "Health:       http://localhost:${api_port:-8000}/api/v1/health"
         echo "Swagger UI:   http://localhost:${api_port:-8000}/api/v1/docs"

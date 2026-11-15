@@ -3,7 +3,9 @@ from unittest.mock import patch
 
 import pytest
 from django.utils import timezone
+from rest_framework.utils.serializer_helpers import ReturnDict
 
+from apps.accounts.models import User
 from apps.accounts.tests.factories import create_user
 from apps.core.exceptions import NotFoundError
 from apps.tasks import selectors, services
@@ -13,6 +15,10 @@ from apps.tasks.serializers import TaskSerializer
 from apps.tasks.tests.factories import create_task
 from apps.teams import services as team_services
 from apps.teams.tests.factories import TeamScenario, add_membership, create_team
+
+
+def as_seen_by(viewer: User, task: Task) -> ReturnDict[str, object]:
+    return TaskSerializer(task, context={"viewer": viewer}).data
 
 
 def listed(scenario: TeamScenario, filters: TaskFilters | None = None) -> list[str]:
@@ -76,10 +82,9 @@ def test_is_overdue(
     due = None if days_from_today is None else timezone.localdate() + timedelta(days_from_today)
     task = create_task(scenario.team, scenario.member, status=status, due_date=due)
 
-    assert (
-        TaskSerializer(selectors.get_visible_task(scenario.member, task.pk)).data["is_overdue"]
-        is expected
-    )
+    found = selectors.get_visible_task(scenario.member, task.pk)
+
+    assert as_seen_by(scenario.member, found)["is_overdue"] is expected
 
 
 def test_today_is_taken_in_the_configured_time_zone(scenario: TeamScenario) -> None:
@@ -90,7 +95,7 @@ def test_today_is_taken_in_the_configured_time_zone(scenario: TeamScenario) -> N
     with patch("django.utils.timezone.now", return_value=late_evening):
         found = selectors.get_visible_task(scenario.member, task.pk)
 
-    assert TaskSerializer(found).data["is_overdue"] is False
+    assert as_seen_by(scenario.member, found)["is_overdue"] is False
 
 
 # --- Archived ---------------------------------------------------------------------------------
