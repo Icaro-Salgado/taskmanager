@@ -44,6 +44,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      # The seed assigns tasks, which queues notifications for the worker.
+      redis:
+        condition: service_healthy
 
   api:
     <<: *backend
