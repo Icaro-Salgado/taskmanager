@@ -34,7 +34,7 @@ case "${1:-up}" in
         echo "Health:       ${base}/api/v1/health"
         echo "Swagger UI:   ${base}/api/v1/docs"
         echo "Django admin: ${base}/admin/"
-        if [ "$seed" = 1 ]; then echo "Demo logins:  docs/demo-data.md (demo only)"; fi
+        if [ "$seed" = 1 ]; then echo "Demo logins:  seed/README.md (demo only)"; fi
         ;;
     down)
         docker compose down

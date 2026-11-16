@@ -28,7 +28,7 @@ def test_restoring_a_team_fails_when_an_active_team_took_its_name() -> None:
     old.save()
     create_team("Alpha")
 
-    # Restoring a deleted team is a plain SQL update (documented in docs/demo-data.md).
+    # Restoring a deleted team is a plain SQL update (documented in docs/running.md).
     with pytest.raises(IntegrityError), connection.cursor() as cursor:
         cursor.execute(
             "UPDATE teams_team SET deleted_at = NULL, deleted_by_id = NULL WHERE id = %s",

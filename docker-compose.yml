@@ -44,7 +44,7 @@ services:
       db:
         condition: service_healthy
 
-  # One-shot: loads the demo data, the SQL files in backend/seed/ in name order (each is safe to
+  # One-shot: loads the demo data, the SQL files in seed/ in name order (each is safe to
   # run twice), then exits. SEED_DEMO=0 (`./run.sh up --no-seed`) skips it. No application code.
   seed:
     image: postgres:17-alpine
@@ -55,7 +55,7 @@ services:
       PGUSER: ${POSTGRES_USER}
       PGPASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - ./backend/seed:/seed:ro
+      - ./seed:/seed:ro
     command: >-
       sh -c 'if [ "$$SEED_DEMO" = 0 ]; then echo "Demo data skipped"; exit 0; fi;
       for f in /seed/*.sql; do psql -q -v ON_ERROR_STOP=1 -f "$$f" || exit 1; echo "Loaded $$f"; done'

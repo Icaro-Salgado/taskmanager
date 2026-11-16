@@ -25,7 +25,7 @@ Then open http://localhost:8080/ (API docs: http://localhost:8080/api/v1/docs).
 ## Documentation
 
 - [`docs/running.md`](docs/running.md): what the script does, URLs, database access, tests, development.
-- [`docs/demo-data.md`](docs/demo-data.md): demo accounts (demo-only credentials) and the sample data.
+- [`seed/README.md`](seed/README.md): demo accounts (demo-only credentials) and the sample data.
 - [`GENAI.md`](GENAI.md): how the project was built with a GenAI tool.
 - [`docs/requirements.md`](docs/requirements.md), [`docs/implementation-prompt.md`](docs/implementation-prompt.md),
   [`docs/backlog.md`](docs/backlog.md).
@@ -65,7 +65,7 @@ Users are created by administrators; there is no sign-up.
 | Rate limiting | 5 logins per minute per client address, 300 requests per minute per user, counted in Redis |
 | Background tasks | Celery with Redis: assignment notification after the commit, daily overdue job with beat |
 | React frontend, responsive | React, TypeScript (strict), Vite, TanStack Query, Tailwind; the board scrolls by column on phones |
-| Seed data and demo credentials | SQL files in `backend/seed/`, loaded by the `seed` service (psql); [`docs/demo-data.md`](docs/demo-data.md) |
+| Seed data and demo credentials | SQL files in [`seed/`](seed/README.md), loaded by the `seed` service (psql) |
 | GenAI documentation | [`GENAI.md`](GENAI.md), with the evidence in [`docs/genai-journal.md`](docs/genai-journal.md) |
 
 ## Architecture

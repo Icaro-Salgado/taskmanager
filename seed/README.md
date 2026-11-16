@@ -1,6 +1,8 @@
-# Demo data (demo only)
+# Seed: demo data (demo only)
 
-The sample data lives in plain SQL files in [`backend/seed/`](../backend/seed/), loaded in name order with
+Everything about the demo data lives in this folder; the application code knows nothing about it.
+
+The sample data is the SQL files here, loaded in name order with
 `psql` by the one-shot `seed` service in `docker-compose.yml`, right after the migrations (`./run.sh up --no-seed`
 skips it). No application code is involved.
 Each statement inserts only the rows whose natural key (email, team name, team and task title) is missing, so
@@ -35,21 +37,3 @@ To change the demo, edit these files and reload on an empty database (`docker co
 | `eva@example.com`, `gabi@example.com` | Members of Design Guild, a team with no leader |
 
 The Platform team has more than 20 active tasks, so its board paginates.
-
-## Restore a deleted team or task
-
-Deleting a team or a task never removes the row: it sets `deleted_at` and `deleted_by`, and every query in the
-app leaves those rows out. There is no restore screen or endpoint; restoring is a database query:
-
-```sql
--- A team, here the seeded deleted one (its memberships and tasks were never touched, so they come back with it).
--- Fails with a unique violation if an active team has taken the name meanwhile: rename one first.
-UPDATE teams_team SET deleted_at = NULL, deleted_by_id = NULL
-WHERE name = 'Legacy Migration' AND deleted_at IS NOT NULL;
-
--- A task.
-UPDATE tasks_task SET deleted_at = NULL, deleted_by_id = NULL WHERE id = 42;
-```
-
-To find them: `SELECT id, name, deleted_at FROM teams_team WHERE deleted_at IS NOT NULL;` (and the same on
-`tasks_task` with `title`).

@@ -31,7 +31,7 @@ switch ($Command) {
         Write-Host "Health:       $base/api/v1/health"
         Write-Host "Swagger UI:   $base/api/v1/docs"
         Write-Host "Django admin: $base/admin/"
-        if (-not $NoSeed) { Write-Host "Demo logins:  docs/demo-data.md (demo only)" }
+        if (-not $NoSeed) { Write-Host "Demo logins:  seed/README.md (demo only)" }
     }
     "down" {
         docker compose down

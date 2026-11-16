@@ -1,7 +1,7 @@
 # Running and developing
 
 The short version is in the [README](../README.md). Demo accounts and sample data:
-[`demo-data.md`](demo-data.md).
+[`seed/README.md`](../seed/README.md).
 
 ## What `./run.sh up` does
 
@@ -43,6 +43,24 @@ PostgreSQL is published on the host. Use the values from `.env`:
 | Database | `POSTGRES_DB` (`taskmanager`) |
 | User | `POSTGRES_USER` (`taskmanager`) |
 | Password | `POSTGRES_PASSWORD` (`demo-only-password`) |
+
+## Restore a deleted team or task
+
+Deleting a team or a task never removes the row: it sets `deleted_at` and `deleted_by`, and every query in the
+app leaves those rows out. There is no restore screen or endpoint; restoring is a database query:
+
+```sql
+-- A team, here the seeded deleted one (its memberships and tasks were never touched, so they come back with it).
+-- Fails with a unique violation if an active team has taken the name meanwhile: rename one first.
+UPDATE teams_team SET deleted_at = NULL, deleted_by_id = NULL
+WHERE name = 'Legacy Migration' AND deleted_at IS NOT NULL;
+
+-- A task.
+UPDATE tasks_task SET deleted_at = NULL, deleted_by_id = NULL WHERE id = 42;
+```
+
+To find them: `SELECT id, name, deleted_at FROM teams_team WHERE deleted_at IS NOT NULL;` (and the same on
+`tasks_task` with `title`).
 
 ## Tests and checks
 
@@ -91,7 +109,6 @@ backend/
     teams/           teams, memberships and roles, Django admin site
     notifications/   stores and delivers notifications (knows no task rule)
     tasks/           tasks, their rules, the overdue job, the assignment notification
-  seed/              the demo data as SQL files, loaded by psql (docs/demo-data.md)
   Each app: models.py, services.py (the only write path), selectors.py (reads), policies.py (permissions),
   serializers.py and views.py (thin API layer), tests/
 frontend/
@@ -100,5 +117,6 @@ frontend/
   src/components/    shared UI pieces
   nginx.conf         serves the build, proxies /api, /admin and /static to the api
 docs/                requirements, implementation prompt, GenAI journal, backlog
+seed/                the demo data: SQL files loaded by psql, and its README
 docker-compose.yml   the whole stack; run.sh and run.ps1 are thin wrappers around it
 ```
