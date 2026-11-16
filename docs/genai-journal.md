@@ -234,13 +234,13 @@ N. <type> | phase <P> | <model> | section <S of GENAI.md> | commit <hash>
     push: its secret key was shorter than PyJWT accepts without a warning, and pytest fails on warnings; the key
     is now longer. The assignee filter checked `str.isdigit()`, which accepts "²", and `int()` then raised; it
     now checks `isdecimal()`, with a test. Not checked: the browser console (no browser in the session).
-41. decision | after the build | owner | sections 6, 7 | commit pending (owner review)
+41. decision | after the build | owner | sections 6, 7 | commit 4556155
     Owner: "the sample data is too hardcoded on the code [...] add them to a separate folder as sql files? also
     makes a flag on run". Now `backend/seed/*.sql`, loaded by a psql `seed` service; `./run.sh up --no-seed`.
     Claude kept a `seed_demo` command, then its tests; owner: "CODE SHOULD NOT KNOW ABOUT DEMO DATA". Both deleted.
     README: Part 1 minimal (run details in `docs/running.md`, `docs/demo-data.md`), Part 2 unchanged; Claude had
     moved Part 2 out too, owner: "it should have two parts". Goal: "cleaner and more documented".
-42. validation | after the build | Claude Opus 5.5 | section 4 | commit pending (owner review)
+42. validation | after the build | Claude Opus 5.5 | section 4 | commit 4556155
     Command: `uv run pytest`, `ruff check`, `mypy .`; `docker compose run --rm seed` on the seeded stack, then with
     `SEED_DEMO=0`; row counts with `psql`; `docker compose up --build -d --wait`
     Output: `241 passed` (9 seed tests removed), `Total coverage: 99.92%`, ruff and mypy clean; `Loaded /seed/01_users.sql` to
