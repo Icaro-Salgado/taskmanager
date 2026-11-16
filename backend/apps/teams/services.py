@@ -54,11 +54,16 @@ def remove_member(*, actor: User, membership: Membership) -> None:
     """Removes a member, or lets a member leave. A team may end up with no leader.
 
     Their tasks in this team are unassigned in the same transaction, so an assignee is always a
-    member. This is the one call from `teams` into `tasks` (an explicit call, not a signal).
+    member. The membership row is locked first (see `tasks.services._assignee_for`). This is the
+    one call from `teams` into `tasks` (an explicit call, not a signal).
     """
     _ensure_active(membership.team)
     if not policies.can_remove_member(actor, membership.team, membership.user):
         raise PermissionDeniedError("Only team leaders can remove other members.")
     with transaction.atomic():
+        # Locked first: an assignment to this member running at the same time either finishes
+        # before the unassignment below, or waits and then finds no membership.
+        if not list(Membership.objects.select_for_update().filter(pk=membership.pk)):
+            raise NotFoundError("Membership not found.")
         unassign_member_tasks(team=membership.team, user=membership.user)
         membership.delete()

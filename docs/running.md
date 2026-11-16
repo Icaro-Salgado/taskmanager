@@ -22,7 +22,7 @@ tested.
 ## URLs
 
 Everything goes through nginx on one port (`FRONTEND_PORT`, default 8080). The API container is not published on
-the host on purpose (see "Rate limiting" in [README Part 2](../README.md#part-2-user-story-and-design)).
+the host on purpose (see "Security" in [README Part 2](../README.md#part-2-user-story-and-design)).
 
 | What | URL |
 |---|---|
@@ -31,6 +31,25 @@ the host on purpose (see "Rate limiting" in [README Part 2](../README.md#part-2-
 | Swagger UI / OpenAPI schema | http://localhost:8080/api/v1/docs / http://localhost:8080/api/v1/schema |
 | Django admin site | http://localhost:8080/admin/ |
 | Health check | http://localhost:8080/api/v1/health |
+
+## A five-minute tour
+
+The [use case](../README.md#the-use-case) as steps to click through. Every demo account uses the password in
+[`seed/README.md`](../seed/README.md).
+
+1. Log in as `ana@example.com` and pick the Platform team in the team selector. The board has one column per
+   status, and each column is its own paginated request.
+2. Use the filters: assignee, due date range, overdue only.
+3. Create a task and assign it to Diego. Move a card to "done" and use the Undo.
+4. In a second browser (or a private window), log in as `diego@example.com`. The bell shows the assignment
+   within a minute. Open an unassigned task and click "Assign to me".
+5. Run the overdue job by hand: `docker compose exec api python manage.py notify_overdue`. It prints how many
+   notifications it sent. Run it again: it sends nothing new. (If the daily run at 08:00 already happened, the
+   first run prints 0 too.)
+6. As Ana, open the members page and remove Diego. His tasks are now unassigned.
+7. Log in at http://localhost:8080/admin/ as `admin@example.com`: users, teams, and the "leaders" filter that
+   finds teams without one. The API is documented at http://localhost:8080/api/v1/docs; try
+   `GET /api/v1/tasks` with `page_size=5` to see the pagination.
 
 ## Connect to PostgreSQL (DBeaver or any client)
 

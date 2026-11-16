@@ -2,6 +2,8 @@ from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from apps.accounts.models import User
@@ -246,6 +248,34 @@ def test_member_removal_and_unassignment_happen_in_one_transaction(
     assert task.assignee == assignee  # the unassignment was rolled back
 
 
+def test_removing_a_member_who_was_already_removed_answers_not_found(
+    scenario: TeamScenario, other: User
+) -> None:
+    membership = Membership.objects.get(team=scenario.team, user=other)
+    Membership.objects.filter(pk=membership.pk).delete()  # another request got there first
+
+    with pytest.raises(NotFoundError):
+        team_services.remove_member(actor=scenario.leader, membership=membership)
+
+
+def test_assignment_and_member_removal_lock_the_membership_row(
+    scenario: TeamScenario, task: Task, other: User
+) -> None:
+    """Both sides take the same row lock: neither slips between the other's check and write."""
+    membership = Membership.objects.get(team=scenario.team, user=other)
+
+    with CaptureQueriesContext(connection) as assigning:
+        services.update_task(actor=scenario.leader, task=task, changes={"assignee_id": other.pk})
+    with CaptureQueriesContext(connection) as removing:
+        team_services.remove_member(actor=scenario.leader, membership=membership)
+
+    for queries in (assigning, removing):
+        assert any(
+            "teams_membership" in query["sql"] and "FOR UPDATE" in query["sql"]
+            for query in queries.captured_queries
+        )
+
+
 # --- Status, terminal and reopen --------------------------------------------------------------
 
 
@@ -331,6 +361,20 @@ def test_a_member_takes_an_unassigned_task_and_nothing_else_changes(
 def test_an_assigned_task_cannot_be_taken(scenario: TeamScenario, task: Task, other: User) -> None:
     with pytest.raises(ConflictError):
         services.assign_self(actor=other, task=task)
+
+
+def test_two_members_taking_the_same_task_only_the_first_wins(
+    scenario: TeamScenario, other: User
+) -> None:
+    open_task = create_task(scenario.team, scenario.leader)
+    stale = Task.objects.select_related("team").get(pk=open_task.pk)  # read before the first take
+
+    services.assign_self(actor=other, task=open_task)
+    with pytest.raises(ConflictError):
+        services.assign_self(actor=scenario.member, task=stale)
+
+    open_task.refresh_from_db()
+    assert open_task.assignee == other
 
 
 def test_an_admin_who_is_not_a_member_cannot_take_a_task(scenario: TeamScenario) -> None:

@@ -43,6 +43,7 @@ if it would change the foundation, it becomes a design topic instead of a backlo
 
 - Detect lost updates: today the last save wins when two people edit the same task. Send the `updated_at` read
   (or an ETag) with each change and answer 409 when the task changed in between.
+- Keep a notification when the broker is down (an outbox table read by the worker). Today it is logged and lost.
 - Cursor pagination for the board columns. "Load more" asks by page number, so a task that moves while someone
   pages can show twice (filtered out on screen) or be skipped until the next refresh.
 - With Redis fully down, login answers 500 as an HTML page: the rate limit counts in Redis. Decide whether the
