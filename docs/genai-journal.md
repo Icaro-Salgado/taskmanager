@@ -223,3 +223,14 @@ N. <type> | phase <P> | <model> | section <S of GENAI.md> | commit <hash>
     Output: owner: "approve". Part 2 now holds the rules as built (layering, domain rules, permissions, API and
     security, frontend, run and test). The three agent worktrees and six merged branches were removed after
     checking each was clean and its work was on `develop`.
+39. validation | after the build | Claude Fable 5.2 | sections 4, 5 | commits cbe353a, 4314632
+    A fresh session with no part in the build reviewed the whole repository. Owner: "Review the hole thing."
+    Command: `uv run pytest` with only the variables the CI workflow sets; `curl` on the running stack; then
+    pytest, ruff, mypy, pre-commit, eslint, vitest and the frontend build
+    Output: `15 failed, 234 passed` (`InsecureKeyLengthWarning: The HMAC key is 18 bytes long`); `assignee=²`
+    answered `500`; after the fixes `250 passed`, `Total coverage: 99.93%`, every other check clean
+40. correction | after the build | Claude Fable 5.2 | section 5 | commits cbe353a, 4314632
+    Two findings from entry 39. CI had never run (`main` does not exist yet) and would have failed on its first
+    push: its secret key was shorter than PyJWT accepts without a warning, and pytest fails on warnings; the key
+    is now longer. The assignee filter checked `str.isdigit()`, which accepts "²", and `int()` then raised; it
+    now checks `isdecimal()`, with a test. Not checked: the browser console (no browser in the session).

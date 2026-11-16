@@ -10,7 +10,7 @@ the summary, filled at the end of each build phase. The raw, chronological evide
   into [`docs/implementation-prompt.md`](docs/implementation-prompt.md) as it was taken, and a second model
   reviewed that prompt before any code existed. It found 21 gaps (section 2).
 - **Nothing the AI reported was taken on trust.** Every phase ends with the commands that were run and their real
-  output. Two review checkpoints stopped the build until the owner had read the code and exercised the running
+  output. Two review checkpoints stopped the build until I had read the code and exercised the running
   stack (section 4).
 - **The checks found real defects in generated code** (section 5). Three examples: a forged `X-Forwarded-For`
   header escaped the login rate limit; a broker outage turned an already saved change into a 500; two browser tabs
@@ -23,17 +23,17 @@ the summary, filled at the end of each build phase. The raw, chronological evide
 - Tool: Claude Code (terminal).
 - Models: Claude Opus for the design conversation; Claude Fable 5.2 for the two reviews done before the build
   (journal entries 10 and 11). A different model reviewed the plan on purpose: it had no stake in the earlier
-  decisions. The build session started on Claude Fable 5.2, which wrote the phase 1 scaffolding; the owner then
+  decisions. The build session started on Claude Fable 5.2, which wrote the phase 1 scaffolding; I then
   switched to Claude Opus 5.5, which fixed the review findings and did the build from there on (entries 12 and 13).
 - Method: the design was agreed in conversation, one topic at a time, before any code. The decisions were distilled
   into `docs/implementation-prompt.md`, which was reviewed by a different model before the build and then given to
   a fresh session. Standing rules for the tool are in `CLAUDE.md`.
-- Parallel build, from phase 5 (entry 24): on the owner's request, the notifications, the seed data and the
+- Parallel build, from phase 5 (entry 24): at my request, the notifications, the seed data and the
   frontend were built at the same time by three agents, each in its own git worktree and branch, with a model
   chosen per task (Claude Opus 5.5 where a subtle bug was likely, Claude Sonnet 5.5 for the mechanical seed).
   Claude Fable 5.2 wrote the briefs, agreed the API contract between the branches in advance, re-ran each
-  branch's tests itself and read its diff. Each branch reached `develop` one at a time, uncommitted, for the
-  owner's review.
+  branch's tests itself and read its diff. Each branch reached `develop` one at a time, uncommitted, for
+  my review.
 
 ## 2. The prompt
 
@@ -44,7 +44,7 @@ The prompt was not written from memory in one sitting. It is the result of three
 2. **Distilling.** Each agreed decision went into the prompt as it was taken (entry 5), so the prompt holds
    decisions, not wishes.
 3. **Review by a deeper-reasoning model.** A different model (Claude Fable 5.2) reviewed the finished prompt and
-   found 21 gaps, which the owner decided one by one (entry 10).
+   found 21 gaps, which I decided one by one (entry 10).
 
 Why this way: the important decisions are taken, and the mistakes found, while changing them costs one line of
 text instead of a rewrite of code. The gaps the review found would otherwise have been guessed by the model during
@@ -72,7 +72,7 @@ is not left to guess.
 ## 3. Output code (representative samples)
 
 Three excerpts of the generated code, each with the commit that introduced it and what to look at. All three
-were written by Claude Opus 5.5 from the implementation prompt and read by the owner at a review checkpoint.
+were written by Claude Opus 5.5 from the implementation prompt and I read them at a review checkpoint.
 
 **A service that protects an invariant** (`backend/apps/tasks/services.py`, commit `4ecec2a`;
 `backend/apps/teams/services.py`, commit `7ea1d39`). The rule "an assignee is an active member of the task's team"
@@ -162,18 +162,18 @@ management command are thin wrappers around this service.
 ## 4. How the AI's suggestions were validated
 
 Process (journal entry 11): validation is planned, not improvised. Per phase: the command,
-its real output and the commit hash. Two review checkpoints (after the core domain and after the frontend): the
-owner reads the code and an independent review runs in a fresh session.
+its real output and the commit hash. Two review checkpoints (after the core domain and after the frontend): I
+read the code and an independent review runs in a fresh session.
 
-- Phase 1 (setup): stack, health endpoint, tests, linters and hooks, entry 12. Before the first commit the owner
+- Phase 1 (setup): stack, health endpoint, tests, linters and hooks, entry 12. Before the first commit I
   walked through the scaffolding with Claude (entry 13). CI runs on `main`, which only receives merges from
   `develop` (entry 14).
 - Phase 2 (accounts, auth, teams): unit, API, admin site and query-count tests, entry 16.
 - Phase 3 (tasks): permission matrix, invariants, filters and query-count tests, entry 17.
-- Review checkpoint 1: the owner exercised every endpoint against the running stack with an API client
+- Review checkpoint 1: I exercised every endpoint against the running stack with an API client
   collection (one request per rule, each with its expected status) and inspected the database before moving on.
   The decisions taken during phases 2 to 4 were approved in one batch (entries 19 to 22). From then on, work
-  stopped for review is left uncommitted so the owner reviews the diff before the commit (entry 23).
+  stopped for review is left uncommitted so I review the diff before the commit (entry 23).
 - Phase 4 (rate limits, API docs): limit tests and a schema test that fails on any undocumented endpoint, entry 18.
 - Phase 5 (notifications): the agent's reported results were not taken on trust. The reviewing model re-ran the
   suite, then exercised the real stack: a task assigned through the services, the worker's log, the overdue
@@ -181,9 +181,12 @@ owner reads the code and an independent review runs in a fresh session.
 - Phase 6 (demo seed): the suite re-run, and the seed run on the real stack twice, the second run adding nothing.
   Running it there exposed a startup-order bug the agent's isolated tests could not see, entry 28.
 - Phase 7 (frontend), review checkpoint 2: the branch was merged and every check re-run (backend, eslint, tsc,
-  vitest, build), then the stack was exercised through nginx with curl, entry 31. Claude then walked the owner
+  vitest, build), then the stack was exercised through nginx with curl, entry 31. Claude then walked me
   through the frontend file by file, collecting open questions in a working file; reading it that way found
-  three of the four fixes (entry 34). The owner approved the batch of UI decisions at once (entry 35).
+  three of the four fixes (entry 34). I approved the batch of UI decisions at once (entry 35).
+- After the build: a fresh session, with none of the build's context, reviewed the whole repository, ran the
+  tests with exactly the environment the CI workflow sets, and probed the running API with malformed input
+  (entry 39).
 
 ## 5. What was corrected or improved
 
@@ -191,7 +194,7 @@ Design stage (done): see journal entries 3, 6, 7, 8 and 10.
 
 Code stage: each review finding, its fix and the commit that fixed it.
 
-- Phase 1: nine findings in the scaffolding, found during the owner's walkthrough and fixed before the first
+- Phase 1: nine findings in the scaffolding, found during my walkthrough and fixed before the first
   commit (entry 13). The most serious: with DEBUG off, Django's default logging dropped the traceback of every
   server error; a test now runs a fresh interpreter and checks the traceback reaches stderr.
 - Phase 1, found in phase 2: the type stubs described Django 6.1 while the project runs 6.0, so mypy checked the
@@ -205,6 +208,9 @@ Code stage: each review finding, its fix and the commit that fixed it.
   seven `401`). The api is no longer published; nginx is the only entry point (entry 33).
 - Phase 7, found in the guided review: two tabs could log each other out when refreshing at once, a deep link was
   lost at login, and the bell kept a fallback for an API that now exists (entry 34).
+- After the build: the CI workflow had never run and would have failed on its first push, because its secret
+  key was short enough for the JWT library to warn and the tests fail on any warning. A filter value such as
+  `assignee=²` answered 500 instead of 400. Both fixed, the second with a test (entry 40).
 
 ## 6. Edge cases, authentication and validation
 
@@ -293,7 +299,7 @@ Evidence: query-count tests, one `EXPLAIN ANALYZE` and the index decision, the s
 - Notifications (entry 25): the list is two queries whatever the number of rows, and the overdue job reads the
   tasks and the leaders in two queries and marks the tasks with one update, instead of one query per task.
 - Indexes (entry 29): `EXPLAIN ANALYZE` on 200k generated tasks. A member's list needs no index; a partial index
-  would speed up the admin all-teams page, but the owner kept it for later instead of adding it before it is needed.
+  would speed up the admin all-teams page, but I kept it for later instead of adding it before it is needed.
 - Frontend (entry 31): `can_edit` and `can_delete` are computed from the role the task query already annotates,
   so the task list stays at two queries (`test_list_queries_do_not_grow_with_the_number_of_tasks`). TypeScript in
   strict mode, eslint, vitest and the build run in CI next to the backend checks (entry 35).
