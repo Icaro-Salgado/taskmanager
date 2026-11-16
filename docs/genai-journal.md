@@ -245,7 +245,7 @@ N. <type> | phase <P> | <model> | section <S of GENAI.md> | commit <hash>
     `SEED_DEMO=0`; row counts with `psql`; `docker compose up --build -d --wait`
     Output: `241 passed` (9 seed tests removed), `Total coverage: 99.92%`, ruff and mypy clean; `Loaded /seed/01_users.sql` to
     `04_tasks.sql`, counts unchanged at `8|4|11|42`; `Demo data skipped`; every service healthy, seed `Exited (0)`
-43. decision | after the build | owner | sections 6, 7 | commit pending (owner review)
+43. decision | after the build | owner | sections 6, 7 | commit 460bede
     Owner: "Seed is still not good, I think every demo data, seed, anything like that should be in a folder on
     root". The SQL files and the demo page now live in the root `seed/` folder (`seed/README.md`); the restore-by-SQL
     instructions, which are not demo data, moved to `docs/running.md`. Checked: `docker compose run --rm seed`
