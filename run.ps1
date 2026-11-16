@@ -1,6 +1,6 @@
-# Thin wrapper around Docker Compose. Usage: .\run.ps1 [up|down|test]
-# Mirrors run.sh. Written for Windows PowerShell but not tested on Windows (see README).
-param([string]$Command = "up")
+# Thin wrapper around Docker Compose. Usage: .\run.ps1 [up [-NoSeed]|down|test]
+# Mirrors run.sh. Written for Windows PowerShell but not tested on Windows (docs/running.md).
+param([string]$Command = "up", [switch]$NoSeed)
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
@@ -21,6 +21,7 @@ function Read-Env([string]$Name, [string]$Default) {
 switch ($Command) {
     "up" {
         Ensure-Env
+        $env:SEED_DEMO = if ($NoSeed) { "0" } else { "1" }
         docker compose up --build -d --wait
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         $base = "http://localhost:" + (Read-Env "FRONTEND_PORT" "8080")
@@ -30,7 +31,7 @@ switch ($Command) {
         Write-Host "Health:       $base/api/v1/health"
         Write-Host "Swagger UI:   $base/api/v1/docs"
         Write-Host "Django admin: $base/admin/"
-        Write-Host "Demo logins:  README.md, section `"Demo credentials`" (demo only)"
+        if (-not $NoSeed) { Write-Host "Demo logins:  docs/demo-data.md (demo only)" }
     }
     "down" {
         docker compose down
@@ -42,7 +43,7 @@ switch ($Command) {
         exit $LASTEXITCODE
     }
     default {
-        Write-Host "Usage: .\run.ps1 [up|down|test]"
+        Write-Host "Usage: .\run.ps1 [up [-NoSeed]|down|test]"
         exit 1
     }
 }

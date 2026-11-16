@@ -264,14 +264,8 @@ Phase 5 (entries 25 to 27):
 | A job that runs late sends nothing if the task was deleted or reassigned | `test_assignment_notifications.py::test_nothing_is_sent_for_a_task_deleted_or_reassigned_...` |
 | A broker outage loses the notification, not the assignment | `test_assignment_notifications.py::test_a_broker_outage_...` |
 
-Phase 6, demo seed (entries 28 and 30):
-
-| Rule | Covered by (`backend/apps/tasks/tests/test_seed_demo.py`) |
-|---|---|
-| Seeded users log in with the demo-only password the command prints | `::test_creates_an_admin_and_users_...`, `::test_a_seeded_user_can_obtain_a_token` |
-| The seed shows every case: each status, overdue, archived, unassigned, a leaderless team, mixed roles | `::test_every_status_...`, `::test_some_tasks_are_overdue_...`, `::test_old_finished_tasks_...`, `::test_one_team_has_no_leader_...` |
-| The soft-deleted team and its tasks stay hidden | `::test_the_soft_deleted_team_...` |
-| Running it twice changes nothing | `::test_running_the_seed_twice_changes_no_row_counts` |
+Phase 6, demo seed (entries 28 and 30): its tests were removed with the seed code in entry 41; the demo data is
+now plain SQL that no code knows about, checked on the running stack (entry 42).
 
 Phase 7, frontend (entries 31 to 35):
 

@@ -31,7 +31,8 @@ asks for. Do not reopen a design decision; if one proves wrong, stop and ask the
 
 ## Repository rules
 
-- `GENAI.md` at the repo root. `README.md` explains setup, connections and key decisions.
+- `GENAI.md` at the repo root. `README.md`: Part 1 is minimal (prerequisites, `run.sh` usage, links to `docs/running.md`
+  and `docs/demo-data.md`); Part 2 holds the user story, design and key decisions.
 - No symlinks. Check with `find . -type l -not -path './.git/*'`.
 - No secrets. Seeded demo credentials are allowed but must be marked demo-only. Variables go in `.env.example`.
 - Small commits with clear messages. Never commit `docs/private/`. Do not push unless the owner asks.
@@ -103,7 +104,7 @@ mypy (strict), pre-commit, pytest, vitest, Docker Compose. `backend/`, `frontend
   reopen: creator, assignee, leader, admin. Delete: creator, leader, admin. Assign-self: members only, unassigned
   unfinished tasks. Manage members: leaders and admins; anyone may leave. Delete a team: admins.
 - Soft delete for teams and tasks (`deleted_at`, `deleted_by`); selectors exclude them explicitly (no custom
-  default manager). Restored only by SQL (README).
+  default manager). Restored only by SQL (`docs/demo-data.md`).
 - Notifications: an assignment by someone else is queued with `transaction.on_commit`; a broker failure is logged
   and the change is kept. The daily overdue job notifies the assignee and the team's leaders, grouped per person
   and team, marks `overdue_notified_at`, and skips locked rows, so a rerun sends nothing new.
@@ -125,8 +126,9 @@ change, the task lists are invalidated. Features in `src/features/<area>/`, each
 
 ## Run and test
 
-- `./run.sh` (up, down, test; `run.ps1` is untested) starts the stack and seeds it; app, API, Swagger and admin
-  on http://localhost:8080. Demo credentials: `README.md`.
+- `./run.sh` (up, down, test; `run.ps1` is untested) starts the stack and seeds it (`up --no-seed` skips it); app, API, Swagger and admin
+  on http://localhost:8080. Demo data: SQL files in `backend/seed/`,
+  loaded with psql by the one-shot compose `seed` service; credentials in `docs/demo-data.md`.
 - Backend: `./run.sh test`, or in `backend/` with `.env` loaded: `uv run pytest`, `ruff check`, `mypy .`.
   Coverage must stay at or above 80%. Query-count tests guard the list endpoints against N+1.
 - Frontend, in `frontend/`: `npm run lint`, `npm test`, `npm run build`.

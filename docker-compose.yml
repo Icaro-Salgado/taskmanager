@@ -36,17 +36,32 @@ services:
       timeout: 3s
       retries: 20
 
-  # One-shot: applies migrations and loads the demo seed (idempotent), then exits. The services
-  # below wait for it to succeed.
+  # One-shot: applies the migrations, then exits. The services below wait for it.
   migrate:
     <<: *backend
-    command: sh -c "python manage.py migrate --noinput && python manage.py seed_demo"
+    command: python manage.py migrate --noinput
     depends_on:
       db:
         condition: service_healthy
-      # The seed assigns tasks, which queues notifications for the worker.
-      redis:
-        condition: service_healthy
+
+  # One-shot: loads the demo data, the SQL files in backend/seed/ in name order (each is safe to
+  # run twice), then exits. SEED_DEMO=0 (`./run.sh up --no-seed`) skips it. No application code.
+  seed:
+    image: postgres:17-alpine
+    environment:
+      SEED_DEMO: ${SEED_DEMO:-1}
+      PGHOST: db
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./backend/seed:/seed:ro
+    command: >-
+      sh -c 'if [ "$$SEED_DEMO" = 0 ]; then echo "Demo data skipped"; exit 0; fi;
+      for f in /seed/*.sql; do psql -q -v ON_ERROR_STOP=1 -f "$$f" || exit 1; echo "Loaded $$f"; done'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
   api:
     <<: *backend
@@ -57,7 +72,7 @@ services:
     # No published port: every request goes through nginx. A port open on the host would let a
     # client send its own X-Forwarded-For and escape the login rate limit.
     depends_on:
-      migrate:
+      seed:
         condition: service_completed_successfully
       redis:
         condition: service_healthy

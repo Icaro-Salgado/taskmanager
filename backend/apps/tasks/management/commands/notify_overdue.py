@@ -4,7 +4,7 @@ from apps.tasks import services
 
 
 class Command(BaseCommand):
-    help = "Runs the daily overdue job now, without waiting for beat (for demos)."
+    help = "Runs the daily overdue job now, without waiting for beat (on demand)."
 
     def handle(self, *_args: object, **_options: object) -> None:
         run = services.notify_overdue_tasks()

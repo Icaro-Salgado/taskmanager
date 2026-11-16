@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
-# Thin wrapper around Docker Compose. Usage: ./run.sh [up|down|test]
+# Thin wrapper around Docker Compose. Usage: ./run.sh [up [--no-seed]|down|test]
+# Details: docs/running.md
 set -eu
 cd "$(dirname "$0")"
 
@@ -17,7 +18,14 @@ read_env() {
 case "${1:-up}" in
     up)
         ensure_env
-        docker compose up --build -d --wait
+        seed=1
+        if [ "${2:-}" = "--no-seed" ]; then
+            seed=0
+        elif [ -n "${2:-}" ]; then
+            echo "Unknown option: $2 (expected --no-seed)" >&2
+            exit 1
+        fi
+        SEED_DEMO=$seed docker compose up --build -d --wait
         base="http://localhost:$(read_env FRONTEND_PORT)"
         [ "$base" = "http://localhost:" ] && base="http://localhost:8080"
         echo
@@ -26,7 +34,7 @@ case "${1:-up}" in
         echo "Health:       ${base}/api/v1/health"
         echo "Swagger UI:   ${base}/api/v1/docs"
         echo "Django admin: ${base}/admin/"
-        echo "Demo logins:  README.md, section \"Demo credentials\" (demo only)"
+        if [ "$seed" = 1 ]; then echo "Demo logins:  docs/demo-data.md (demo only)"; fi
         ;;
     down)
         docker compose down
@@ -36,7 +44,7 @@ case "${1:-up}" in
         docker compose run --build --rm api pytest
         ;;
     *)
-        echo "Usage: $0 [up|down|test]" >&2
+        echo "Usage: $0 [up [--no-seed]|down|test]" >&2
         exit 1
         ;;
 esac
