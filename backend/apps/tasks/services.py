@@ -49,11 +49,16 @@ def _ensure_not_finished(task: Task) -> None:
 
 
 def _assignee_for(team: Team, user_id: int | None) -> User | None:
-    """The invariant: an assignee is an active member of the task's team."""
+    """The invariant: an assignee is an active member of the task's team.
+
+    The membership row is locked until the caller's transaction ends, so a removal running at the
+    same time waits and then unassigns the task: no non-member is ever left assigned.
+    """
     if user_id is None:
         return None
     membership = (
-        Membership.objects.select_related("user")
+        Membership.objects.select_for_update(of=("self",))
+        .select_related("user")
         .filter(team=team, user_id=user_id, user__is_active=True)
         .first()
     )
@@ -82,16 +87,17 @@ def create_task(
         raise RuleViolationError(
             "A task cannot be created as done or canceled.", code="terminal_on_create"
         )
-    task = Task.objects.create(
-        team=team,
-        title=title,
-        description=description,
-        status=status,
-        created_by=actor,
-        assignee=_assignee_for(team, assignee_id),
-        due_date=due_date,
-    )
-    _queue_assignment_notification(actor, task)
+    with transaction.atomic():
+        task = Task.objects.create(
+            team=team,
+            title=title,
+            description=description,
+            status=status,
+            created_by=actor,
+            assignee=_assignee_for(team, assignee_id),
+            due_date=due_date,
+        )
+        _queue_assignment_notification(actor, task)
     return task
 
 
@@ -105,9 +111,6 @@ def update_task(*, actor: User, task: Task, changes: TaskChanges) -> Task:
         task.title = changes["title"]
     if "description" in changes:
         task.description = changes["description"]
-    reassigned = "assignee_id" in changes and changes["assignee_id"] != task.assignee_id
-    if reassigned:
-        task.assignee = _assignee_for(task.team, changes["assignee_id"])
     if "due_date" in changes and changes["due_date"] != task.due_date:
         task.due_date = changes["due_date"]
         task.overdue_notified_at = None  # a new due date may become overdue again
@@ -115,9 +118,13 @@ def update_task(*, actor: User, task: Task, changes: TaskChanges) -> Task:
         task.status = changes["status"]
         if task.is_terminal:
             task.completed_at = timezone.now()
-    task.save()
-    if reassigned:
-        _queue_assignment_notification(actor, task)
+    reassigned = "assignee_id" in changes and changes["assignee_id"] != task.assignee_id
+    with transaction.atomic():
+        if reassigned:
+            task.assignee = _assignee_for(task.team, changes["assignee_id"])
+        task.save()
+        if reassigned:
+            _queue_assignment_notification(actor, task)
     return task
 
 
@@ -136,15 +143,27 @@ def reopen_task(*, actor: User, task: Task) -> Task:
 
 
 def assign_self(*, actor: User, task: Task) -> Task:
-    """A member takes an unassigned task. Changes nothing else."""
+    """A member takes an unassigned task. Changes nothing else.
+
+    The write is one conditional UPDATE, so when two members take the same task only the first
+    wins: the task this function received may be out of date, the database row is not.
+    """
     _ensure_active(task)
     if not policies.can_assign_self(actor, task):
         raise PermissionDeniedError("Only team members can take tasks.")
     _ensure_not_finished(task)
-    if task.assignee_id is not None:
+    now = timezone.now()
+    with transaction.atomic():
+        _assignee_for(task.team, actor.pk)
+        taken = (
+            Task.objects.filter(pk=task.pk, assignee__isnull=True, deleted_at__isnull=True)
+            .exclude(status__in=TERMINAL_STATUSES)
+            .update(assignee=actor, updated_at=now)
+        )
+    if not taken:
         raise ConflictError("This task is already assigned.", code="already_assigned")
     task.assignee = actor
-    task.save(update_fields=["assignee", "updated_at"])
+    task.updated_at = now
     return task
 
 
