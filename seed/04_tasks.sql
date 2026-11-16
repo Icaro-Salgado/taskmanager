@@ -1,6 +1,6 @@
 -- Demo tasks. Dates are relative to today, so the demo looks right whenever it is loaded:
 -- `due` is days from today (negative is overdue), `finished` is days ago (done and canceled only).
--- Platform has more than 20 active tasks, so its list paginates. Each task is created by its
+-- Platform has more than 20 tasks to do, so that column of its board paginates. Each task is created by its
 -- team's leader (Design Guild has none: Eva). Safe to run twice: matched by team and title.
 INSERT INTO tasks_task (team_id, title, description, status, created_by_id, assignee_id,
                         due_date, completed_at, created_at, updated_at)
@@ -38,6 +38,17 @@ FROM (VALUES
     ('Platform', 'Evaluate a second cloud region', 'canceled', NULL, NULL, 3, 'Out of budget this year.'),
     ('Platform', 'Switch to a managed Kafka', 'canceled', 'diego', NULL, 45, ''),
     ('Platform', 'Rewrite the deploy script in Go', 'canceled', NULL, NULL, 90, ''),
+    -- Ten more to do, so the "To do" column holds more than one page (20) and shows "Load more".
+    ('Platform', 'Add request IDs to the access logs', 'todo', 'bruno', 6, NULL, ''),
+    ('Platform', 'Write the database restore drill', 'todo', NULL, 8, NULL, ''),
+    ('Platform', 'Clean up unused DNS records', 'todo', NULL, NULL, NULL, ''),
+    ('Platform', 'Set memory limits on the worker containers', 'todo', 'diego', 11, NULL, ''),
+    ('Platform', 'Review alert thresholds for the API', 'todo', 'ana', 16, NULL, ''),
+    ('Platform', 'Document the release checklist', 'todo', NULL, 18, NULL, ''),
+    ('Platform', 'Upgrade the CI runners', 'todo', 'carla', 20, NULL, ''),
+    ('Platform', 'Test the rollback of a failed migration', 'todo', NULL, 24, NULL, ''),
+    ('Platform', 'Add a status page for internal services', 'todo', NULL, 28, NULL, ''),
+    ('Platform', 'Rotate the API signing keys', 'todo', 'bruno', 35, NULL, ''),
     ('Mobile App', 'Fix the crash when opening a task offline', 'in_progress', 'fabio', 3, NULL, ''),
     ('Mobile App', 'Add dark mode to the task list', 'todo', 'ana', 15, NULL, ''),
     ('Mobile App', 'Support push notification deep links', 'blocked', 'fabio', -4, NULL, ''),

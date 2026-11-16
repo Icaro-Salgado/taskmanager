@@ -18,7 +18,7 @@ notifications.
 | `01_users.sql` | The administrator and seven users |
 | `02_teams.sql` | Four teams, one with no leader and one soft-deleted |
 | `03_memberships.sql` | Who is in which team, and as what |
-| `04_tasks.sql` | 42 tasks covering every status, overdue, unassigned and archived ones |
+| `04_tasks.sql` | 52 tasks covering every status, overdue, unassigned and archived ones |
 
 To change the demo, edit these files and reload on an empty database (`docker compose down -v`, then `./run.sh up`).
 
@@ -36,4 +36,4 @@ To change the demo, edit these files and reload on an empty database (`docker co
 | `diego@example.com`, `fabio@example.com` | Members |
 | `eva@example.com`, `gabi@example.com` | Members of Design Guild, a team with no leader |
 
-The Platform team has more than 20 active tasks, so its board paginates.
+The Platform team has more than 20 tasks to do, so the "To do" column of its board paginates ("Load more").
