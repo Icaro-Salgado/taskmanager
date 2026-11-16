@@ -250,3 +250,9 @@ N. <type> | phase <P> | <model> | section <S of GENAI.md> | commit <hash>
     root". The SQL files and the demo page now live in the root `seed/` folder (`seed/README.md`); the restore-by-SQL
     instructions, which are not demo data, moved to `docs/running.md`. Checked: `docker compose run --rm seed`
     loaded the four files, counts unchanged at `8|4|11|42`, every service healthy; `241 passed`.
+44. validation | after the build | Claude Fable 5.2 | sections 4, 5 | commits 170888f, 6dadbf1, aa99aa9
+    Seven reviewer agents, each with one role, read `README.md` and `GENAI.md` against the code; a fact-checker
+    then checked every number, quote, commit and test name. Found: two members taking the same task both got
+    200; an assignment could slip inside a member removal; "Load more" never showed with the demo data.
+    Command: `./run.sh test`; two simultaneous `assign-self` calls, eight times; a headless browser on every page
+    Output: `244 passed`, `Total coverage: 99.92%`; `200` and `409` each time; no console messages

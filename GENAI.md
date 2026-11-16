@@ -98,7 +98,7 @@ carries a rule.
 ### A service that protects an invariant
 
 `backend/apps/tasks/services.py` and `backend/apps/teams/services.py` (first written in commit `4ecec2a`; the
-row lock was added after the last review, see section 5).
+row lock was added after the last review, entry 44).
 
 What to look at:
 
@@ -314,7 +314,7 @@ Most serious first.
 | With the broker down, a change that was already saved answered 500 | Reading the agent's diff: the notification was queued with no error handling | Catch, log, keep the change. Checked against an unreachable broker | 26, `124babf` |
 | Two tabs renewing their token at once logged each other out | Walking through the frontend file by file with me | The refused tab retries with the token the other tab stored. A test fails without the fix | 34, `e107c41` |
 | The CI workflow would have failed on its first push | A fresh session ran the tests with only the variables CI sets | The CI secret key was too short for the JWT library, which warns, and the tests fail on warnings. Longer key | 40, `cbe353a` |
-| Two members taking the same task both got a 200, and the second kept it. An assignment could also slip between a member removal's two steps and leave a non-member assigned | A review of the finished code by a fresh model session: the check read an out-of-date object, and nothing locked a row | Taking a task is one conditional `UPDATE`; assignment and removal lock the membership row. Two tests, and two simultaneous requests on the running stack: one 200, one 409 | `test_two_members_taking_the_same_task_only_the_first_wins`, `test_assignment_and_member_removal_lock_the_membership_row` |
+| Two members taking the same task both got a 200, and the second kept it. An assignment could also slip between a member removal's two steps and leave a non-member assigned | A review of the finished code by a fresh model session: the check read an out-of-date object, and nothing locked a row | Taking a task is one conditional `UPDATE`; assignment and removal lock the membership row. Two tests, and two simultaneous requests on the running stack: one 200, one 409 | 44, `170888f` |
 | The filter `assignee=²` answered 500 | Probing the running API with malformed input | `str.isdigit()` accepts "²" and `int()` then fails. Now `isdecimal()`, with a test | 40, `4314632` |
 | With DEBUG off, the traceback of every server error was lost | The phase 1 walkthrough | A `LOGGING` setting, and a test that starts a fresh interpreter and checks the traceback reaches stderr | 13, `3f991c4` (test in `95f8965`) |
 | mypy checked the code against the wrong Django: the type stubs described 6.1, the project runs 6.0 | Phase 2, on an admin method whose signature differs between the two | Stubs pinned to the 6.0 line | 19, `7ea1d39` |
