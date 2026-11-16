@@ -65,4 +65,4 @@ if it would change the foundation, it becomes a design topic instead of a backlo
   module and the types out of the service file, so the service reads as the task rules only. Raised by the owner
   on reading the finished code.
 - Automated browser check (for example a Playwright smoke test) that fails on any console warning. For now the
-  owner checks the console by hand.
+  console was checked once with a headless browser (journal entry 44).
